@@ -15,7 +15,11 @@
 #define SCIFI 4
 #define MAX_THREADS sysconf(_SC_NPROCESSORS_CONF)
 
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+
+
 using namespace std;
+
 int P = 2;
 
 struct paragraph {
@@ -130,15 +134,6 @@ void processComedyString(vector<string> words, string &result) {
     }
 }
 
-void processFantasy(vector<string> words, string &result) {
-    for (int i = 0; i < words.size(); i++) {
-        if (islower((words[i])[0])) {
-            (words[i])[0] = toupper((words[i])[0]);
-        }
-        result += words[i];
-        result += " ";
-    }
-}
 
 void processScifi(vector<string> words, string &result) {
     for (int i = 0; i < words.size(); i++) {
@@ -169,6 +164,25 @@ string duplicateEvenPosition(string buffer) {
     return res;
 }
 
+void processFantasy(vector<string> words, string &result) {
+    for (int i = 0; i < words.size(); i++) {
+        if (islower((words[i])[0])) {
+            (words[i])[0] = toupper((words[i])[0]);
+        }
+        result += words[i];
+        result += " ";
+    }
+}
+
+void *processFantasyThreads(void *arg) {
+    // int id = *(int *)arg;
+    vector<string> words = *(vector<string>)arg;
+
+    // print vector to test if it works
+    for (int i = 0; i < words.size(); i++) {
+        cout << words[i];
+    }
+}
 
 int main (int argc, char *argv[]) {
 

@@ -14,8 +14,14 @@
 #define FANTASY 3
 #define SCIFI 4
 #define MAX_THREADS sysconf(_SC_NPROCESSORS_CONF)
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+
 
 using namespace std; 
+
+int P = 4;
+pthread_barrier_t barrier;
+
 
 bool isConsonant(char c) {
     c = tolower(c);
@@ -106,15 +112,6 @@ void processComedyString(vector<string> words, string &result) {// , char **resu
 
 }
 
-void processFantasy(vector<string> words, string &result) {
-    for (int i = 0; i < words.size(); i++) {
-        if (islower((words[i])[0])) {
-            (words[i])[0] = toupper((words[i])[0]);
-        }
-        result += words[i];
-        result += " ";
-    }
-}
 
 
 void processScifi(vector<string> words, string &result) {
@@ -127,20 +124,83 @@ void processScifi(vector<string> words, string &result) {
     }
 }
 
+void processFantasy(vector<string> words, string &result) {
+    for (int i = 0; i < words.size(); i++) {
+        if (islower((words[i])[0])) {
+            (words[i])[0] = toupper((words[i])[0]);
+        }
+        result += words[i];
+        result += " ";
+    }
+}
+
+void *processFantasyThreads(void *arg) {
+    // int id = *(int *)arg;
+    // vector<string> words = *(static_cast<vector<string>*>(arg));
+    vector<string> words = *(vector<string>*)(arg);
+
+    // print vector to test if it works
+    for (int i = 0; i < words.size(); i++) {
+        cout << words[i] << " ";
+    }
+
+
+    cout << endl;
+	pthread_exit(NULL);
+
+}
+
+
 int main() {
 
-    string str = "Mama are mere mari si pufoase";
-    // cout << duplicateConsonants(str) << "\n";
+    string str = "Mama are mere mari si pufoase si smechere rau de tot";
+    // // cout << duplicateConsonants(str) << "\n";
 
     vector<string> result;
     tokenize(str, result);
 
-    string res;
-    //processComedyString(result, res);
-    //cout << res << "\n";
+    // string res;
+    // //processComedyString(result, res);
+    // //cout << res << "\n";
 
-    // processFantasy(result, res);
-    processScifi(result, res);
-    cout << res << "\n";
+    // // processFantasy(result, res);
+    // processScifi(result, res);
+    // cout << res << "\n";
+
+    int r = 0;
+    void *status;
+    pthread_t threads[P];
+    vector<string> arguments[P];
+
+    pthread_barrier_init(&barrier, NULL, P);
+	if (r) {
+		printf("Cannot init barrier!\n");
+	}
+
+	for (int i = 0; i < P; i++) {
+		arguments[i] = result;
+		r = pthread_create(&threads[i], NULL, processFantasyThreads, &arguments[i]);
+
+		if (r) {
+			printf("Eroare la crearea thread-stdului %d\n", i);
+			exit(-1);
+		}
+	}
+
+	for (int i = 0; i < P; i++) {
+		r = pthread_join(threads[i], &status);
+
+		if (r) {
+			printf("Eroare la asteptarea thread-ului %d\n", i);
+			exit(-1);
+		}
+	}
+
+	r = pthread_barrier_destroy(&barrier);
+	if (r) {
+		printf("Cannot destroy barrier.\n");
+	}
+
+    return 0;
 
 }
