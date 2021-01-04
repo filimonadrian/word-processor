@@ -24,10 +24,11 @@ pthread_barrier_t barrier;
 
 typedef struct t_arguments {
     int id; 
-    /* splitted sentence */
-    vector<string> words;
     /* the result of a thread */
     string result;
+    /* splitted sentence and size */
+    string *words;
+    int size;
 
 } t_arguments;
 
@@ -145,42 +146,23 @@ void processFantasy(vector<string> words, string &result) {
 
 void *processFantasyThreads(void *arg) {
 
-    // vector<string> words = *(vector<string>*)(arg);
-    // vector<string> words = *(static_cast<vector<string>*>(arg));
+    t_arguments *args = (t_arguments*)(arg);
+    string *words = args->words;
+    int id = args->id;
+    int size = args->size;
 
+    int start = id * (double)size / P;
+    int end = MIN((id + 1) * (double)size / P, size);
 
-
-
-    // t_arguments args = *(t_arguments*)(arg);
-
-    // int id = args.id;
-    // vector<string> words = args.words;
-    // string *result = &args.result;
-
-    // int size = words.size();
-
-    // int start= id * (double)size / P;
-    // int end = MIN((id + 1) * (double)size / P, size);
-
-    // // print vector to test if it works
-    // for (int i = start; i < end; i++) {
-    //     // cout << "Thread " << id << " " << words[i] <<  <<  "\n";
-    //     if (islower((words[i])[0])) {
-    //         (words[i])[0] = toupper((words[i])[0]);
-    //     }
-    //     args.result += words[i];
-    //     args.result += " ";
-    // }
-
-    // cout << args.result;
-    // cout << endl;
-
-    ((t_arguments*)(arg))->id = 100;
-    // cout << "AICI " << ((t_arguments*)(arg))->id << "\n";
-    // arg->id = 1000;
+    for (int i = start; i < end; i++) {
+        if (islower((words[i])[0])) {
+            (words[i])[0] = toupper((words[i])[0]);
+        }
+        args->result += words[i];
+        args->result += " ";
+    }
 
 	pthread_exit(NULL);
-
 }
 
 
@@ -216,14 +198,13 @@ int main() {
 	if (r) {
 		printf("Cannot init barrier!\n");
 	}
-
-
-
+    
 	for (int i = 0; i < P; i++) {
 		arguments[i].id = i;
-		// arguments[i].words = result;        
+        arguments[i].words = &result[0]; 
+        arguments[i].size = result.size();
+
 		r = pthread_create(&threads[i], NULL, processFantasyThreads, &arguments[i]);
-        // cout << arguments[i].id << endl;
 		if (r) {
 			printf("Eroare la crearea thread-stdului %d\n", i);
 			exit(-1);
@@ -232,7 +213,6 @@ int main() {
 
 	for (int i = 0; i < P; i++) {
 		r = pthread_join(threads[i], &status);
-  cout << arguments[i].id << endl;
 		if (r) {
 			printf("Eroare la asteptarea thread-ului %d\n", i);
 			exit(-1);
@@ -242,14 +222,14 @@ int main() {
     string finalString;
     /* compose the modified string */
     for (int i = 0; i < P; i++) {
-        // finalString += (arguments[i].result);
+        finalString += (arguments[i].result);
 
-        // cout << (arguments[i].result) << endl;
+        cout << arguments[i].result << endl;
         // cout << arguments[i].result;
     }
 
     // cout << "_" << arguments[0].result << "_\n";
-    // cout << finalString << "\n";
+    cout << finalString << "\n";
 
 	r = pthread_barrier_destroy(&barrier);
 	if (r) {
