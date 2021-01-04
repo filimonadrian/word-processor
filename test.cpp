@@ -24,6 +24,8 @@ pthread_barrier_t barrier;
 
 typedef struct t_arguments {
     int id; 
+    /* initial paragraph */
+    string paragraph;
     /* the result of a thread */
     string result;
     /* splitted sentence and size */
@@ -31,32 +33,6 @@ typedef struct t_arguments {
     int size;
 
 } t_arguments;
-
-
-bool isConsonant(char c) {
-    c = tolower(c);
-    /* if c is letter and is not vowel */
-    return (c >= 'a' && c <= 'z') && 
-            !(c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u');
-}
-
-string duplicateConsonants(string buffer) {
-    
-    // define empty string and construct a new buffer
-    string res = "";
-
-    int buffer_len = buffer.length();
-
-    for (int i = 0; i < buffer_len; i++) {
-        res += buffer[i];
-
-        if (isConsonant(buffer[i])) {
-            res += tolower(buffer[i]);
-        }
-    }
-
-    return res;
-}
 
 // http://www.joshbarczak.com/blog/?p=970
 // manual solution works faster
@@ -107,10 +83,53 @@ vector<string> tokenize(std::string &str, vector<string> &result) {
     return result;
 }
 
-void processComedyString(vector<string> words, string &result) {// , char **result) {
+bool isConsonant(char c) {
+    c = tolower(c);
+    /* if c is letter and is not vowel */
+    return (c >= 'a' && c <= 'z') && 
+            !(c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u');
+}
+
+string duplicateConsonants(string buffer) {
+    
+    // define empty string and construct a new buffer
+    string res = "";
+
+    int buffer_len = buffer.length();
+
+    for (int i = 0; i < buffer_len; i++) {
+        res += buffer[i];
+
+        if (isConsonant(buffer[i])) {
+            res += tolower(buffer[i]);
+        }
+    }
+
+    return res;
+}
+
+void *processHorrorThreads(void *arg) {
+
+    t_arguments *args = (t_arguments*)(arg);
+    string *words = args->words;
+    int id = args->id;
+    int size = args->size;
+
+    int start = id * (double)size / P;
+    int end = MIN((id + 1) * (double)size / P, size);
+
+    for (int i = start; i < end; i++) {
+        args->result += duplicateConsonants(words[i]);
+        args->result += " ";
+    }
+
+	pthread_exit(NULL);
+}
+
+
+void processComedy(vector<string> words, string &result) {
     for (int i = 0; i < words.size(); i++) {
         for (int j = 0; j < words[i].length(); j++) {
-            // cout << (words[i])[j] << " ";
             result.push_back((words[i])[j]);
             if ((j + 1) % 2 == 0) {
                 result.push_back((words[i])[j]);
@@ -119,10 +138,35 @@ void processComedyString(vector<string> words, string &result) {// , char **resu
         result.push_back(' ');
         // cout << "\n";
     }
-
 }
 
 
+
+void *processComedyThreads(void *arg) {
+    
+    t_arguments *args = (t_arguments*)(arg);
+    string *words = args->words;
+    int id = args->id;
+    int size = args->size;
+
+    int start = id * (double)size / P;
+    int end = MIN((id + 1) * (double)size / P, size);
+
+    for (int i = start; i < end; i++) {
+        for (int j = 0; j < words[i].length(); j++) {
+            // cout << (words[i])[j] << " ";
+            if ((j + 1) % 2 == 0) {
+                args->result.push_back(toupper((words[i])[j]));
+            } else {
+                args->result.push_back((words[i])[j]);
+            }
+        }
+        args->result.push_back(' ');
+        // cout << "\n";
+    }
+
+	pthread_exit(NULL);
+}
 
 void processScifi(vector<string> words, string &result) {
     for (int i = 0; i < words.size(); i++) {
@@ -191,7 +235,8 @@ void *processFantasyThreads(void *arg) {
 
 int main() {
 
-    string str = "stiti ca tema asta contine si MPI si Pthreads, nu? ";
+    string str = "da, dar e tema 3 si mereu temele 3 au fost usoare plus ca e scrisa de Hogea, toate temele lui sunt accesibile";
+    // string str = "Aceasta tema pare Imposibil de grea si Speram ca nu e imposibil sa o facem";
     // // cout << duplicateConsonants(str) << "\n";
 
     vector<string> result;
@@ -224,8 +269,11 @@ int main() {
         arguments[i].words = &result[0]; 
         arguments[i].size = result.size();
 
+		// r = pthread_create(&threads[i], NULL, processHorrorThreads, &arguments[i]);
+		r = pthread_create(&threads[i], NULL, processComedyThreads, &arguments[i]);
 		// r = pthread_create(&threads[i], NULL, processFantasyThreads, &arguments[i]);
-		r = pthread_create(&threads[i], NULL, processScifiThreads, &arguments[i]);
+		// r = pthread_create(&threads[i], NULL, processScifiThreads, &arguments[i]);
+
 
 		if (r) {
 			printf("Eroare la crearea thread-stdului %d\n", i);
