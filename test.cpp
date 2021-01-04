@@ -22,6 +22,15 @@ using namespace std;
 int P = 4;
 pthread_barrier_t barrier;
 
+typedef struct t_arguments {
+    int id; 
+    /* splitted sentence */
+    vector<string> words;
+    /* the result of a thread */
+    string result;
+
+} t_arguments;
+
 
 bool isConsonant(char c) {
     c = tolower(c);
@@ -135,17 +144,35 @@ void processFantasy(vector<string> words, string &result) {
 }
 
 void *processFantasyThreads(void *arg) {
-    // int id = *(int *)arg;
+
+    // vector<string> words = *(vector<string>*)(arg);
     // vector<string> words = *(static_cast<vector<string>*>(arg));
-    vector<string> words = *(vector<string>*)(arg);
+
+    t_arguments args = *(t_arguments*)(arg);
+
+    int id = args.id;
+    vector<string> words = args.words;
+    string *result = &args.result;
+
+    int size = words.size();
+
+    int start= id * (double)size / P;
+    int end = MIN((id + 1) * (double)size / P, size);
 
     // print vector to test if it works
-    for (int i = 0; i < words.size(); i++) {
-        cout << words[i] << " ";
+    for (int i = start; i < end; i++) {
+        // cout << "Thread " << id << " " << words[i] <<  <<  "\n";
+        if (islower((words[i])[0])) {
+            (words[i])[0] = toupper((words[i])[0]);
+        }
+        args.result += words[i];
+        args.result += " ";
     }
 
-
+    cout << args.result;
     cout << endl;
+    // arg->id = 1000;
+
 	pthread_exit(NULL);
 
 }
@@ -153,7 +180,7 @@ void *processFantasyThreads(void *arg) {
 
 int main() {
 
-    string str = "Mama are mere mari si pufoase si smechere rau de tot";
+    string str = "Mama are mere mari si pufoase si smechere rau de tot EXTRA";
     // // cout << duplicateConsonants(str) << "\n";
 
     vector<string> result;
@@ -163,6 +190,7 @@ int main() {
     // //processComedyString(result, res);
     // //cout << res << "\n";
 
+
     // // processFantasy(result, res);
     // processScifi(result, res);
     // cout << res << "\n";
@@ -170,17 +198,26 @@ int main() {
     int r = 0;
     void *status;
     pthread_t threads[P];
-    vector<string> arguments[P];
 
+    // t_arguments arguments[P];
+
+    t_arguments *arguments;
+    // arguments = new t_arguments[4]; 
+    arguments = (t_arguments*) malloc(P * sizeof(t_arguments));
+
+    
     pthread_barrier_init(&barrier, NULL, P);
 	if (r) {
 		printf("Cannot init barrier!\n");
 	}
 
-	for (int i = 0; i < P; i++) {
-		arguments[i] = result;
-		r = pthread_create(&threads[i], NULL, processFantasyThreads, &arguments[i]);
 
+
+	for (int i = 0; i < P; i++) {
+		arguments[i].id = i;
+		// arguments[i].words = result;        
+		r = pthread_create(&threads[i], NULL, processFantasyThreads, &arguments[i]);
+        cout << arguments[i].id << endl;
 		if (r) {
 			printf("Eroare la crearea thread-stdului %d\n", i);
 			exit(-1);
@@ -195,6 +232,18 @@ int main() {
 			exit(-1);
 		}
 	}
+
+    string finalString;
+    /* compose the modified string */
+    for (int i = 0; i < P; i++) {
+        // finalString += (arguments[i].result);
+
+        // cout << (arguments[i].result) << endl;
+        // cout << arguments[i].result;
+    }
+
+    // cout << "_" << arguments[0].result << "_\n";
+    // cout << finalString << "\n";
 
 	r = pthread_barrier_destroy(&barrier);
 	if (r) {
