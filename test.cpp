@@ -134,6 +134,28 @@ void processScifi(vector<string> words, string &result) {
     }
 }
 
+void *processScifiThreads(void *arg) {
+
+    t_arguments *args = (t_arguments*)(arg);
+    string *words = args->words;
+    int id = args->id;
+    int size = args->size;
+
+    int start = id * (double)size / P;
+    int end = MIN((id + 1) * (double)size / P, size);
+
+    for (int i = start; i < end; i++) {
+        if ((i + 1) % 7 == 0) {
+            reverse(words[i].begin(), words[i].end());
+        }
+        args->result += words[i];
+        args->result += " ";
+    }
+
+	pthread_exit(NULL);
+}
+
+
 void processFantasy(vector<string> words, string &result) {
     for (int i = 0; i < words.size(); i++) {
         if (islower((words[i])[0])) {
@@ -143,6 +165,7 @@ void processFantasy(vector<string> words, string &result) {
         result += " ";
     }
 }
+
 
 void *processFantasyThreads(void *arg) {
 
@@ -168,7 +191,7 @@ void *processFantasyThreads(void *arg) {
 
 int main() {
 
-    string str = "Mama are mere mari si pufoase si smechere rau de tot EXTRA";
+    string str = "stiti ca tema asta contine si MPI si Pthreads, nu? ";
     // // cout << duplicateConsonants(str) << "\n";
 
     vector<string> result;
@@ -187,10 +210,7 @@ int main() {
     void *status;
     pthread_t threads[P];
 
-    // t_arguments arguments[P];
-
     t_arguments *arguments;
-    // arguments = new t_arguments[4]; 
     arguments = (t_arguments*) malloc(P * sizeof(t_arguments));
 
     
@@ -198,13 +218,15 @@ int main() {
 	if (r) {
 		printf("Cannot init barrier!\n");
 	}
-    
+
 	for (int i = 0; i < P; i++) {
 		arguments[i].id = i;
         arguments[i].words = &result[0]; 
         arguments[i].size = result.size();
 
-		r = pthread_create(&threads[i], NULL, processFantasyThreads, &arguments[i]);
+		// r = pthread_create(&threads[i], NULL, processFantasyThreads, &arguments[i]);
+		r = pthread_create(&threads[i], NULL, processScifiThreads, &arguments[i]);
+
 		if (r) {
 			printf("Eroare la crearea thread-stdului %d\n", i);
 			exit(-1);
@@ -224,8 +246,7 @@ int main() {
     for (int i = 0; i < P; i++) {
         finalString += (arguments[i].result);
 
-        cout << arguments[i].result << endl;
-        // cout << arguments[i].result;
+        // cout << arguments[i].result << endl;
     }
 
     // cout << "_" << arguments[0].result << "_\n";
