@@ -148,29 +148,35 @@ void *processFantasyThreads(void *arg) {
     // vector<string> words = *(vector<string>*)(arg);
     // vector<string> words = *(static_cast<vector<string>*>(arg));
 
-    t_arguments args = *(t_arguments*)(arg);
 
-    int id = args.id;
-    vector<string> words = args.words;
-    string *result = &args.result;
 
-    int size = words.size();
 
-    int start= id * (double)size / P;
-    int end = MIN((id + 1) * (double)size / P, size);
+    // t_arguments args = *(t_arguments*)(arg);
 
-    // print vector to test if it works
-    for (int i = start; i < end; i++) {
-        // cout << "Thread " << id << " " << words[i] <<  <<  "\n";
-        if (islower((words[i])[0])) {
-            (words[i])[0] = toupper((words[i])[0]);
-        }
-        args.result += words[i];
-        args.result += " ";
-    }
+    // int id = args.id;
+    // vector<string> words = args.words;
+    // string *result = &args.result;
 
-    cout << args.result;
-    cout << endl;
+    // int size = words.size();
+
+    // int start= id * (double)size / P;
+    // int end = MIN((id + 1) * (double)size / P, size);
+
+    // // print vector to test if it works
+    // for (int i = start; i < end; i++) {
+    //     // cout << "Thread " << id << " " << words[i] <<  <<  "\n";
+    //     if (islower((words[i])[0])) {
+    //         (words[i])[0] = toupper((words[i])[0]);
+    //     }
+    //     args.result += words[i];
+    //     args.result += " ";
+    // }
+
+    // cout << args.result;
+    // cout << endl;
+
+    ((t_arguments*)(arg))->id = 100;
+    // cout << "AICI " << ((t_arguments*)(arg))->id << "\n";
     // arg->id = 1000;
 
 	pthread_exit(NULL);
@@ -217,7 +223,7 @@ int main() {
 		arguments[i].id = i;
 		// arguments[i].words = result;        
 		r = pthread_create(&threads[i], NULL, processFantasyThreads, &arguments[i]);
-        cout << arguments[i].id << endl;
+        // cout << arguments[i].id << endl;
 		if (r) {
 			printf("Eroare la crearea thread-stdului %d\n", i);
 			exit(-1);
@@ -226,7 +232,7 @@ int main() {
 
 	for (int i = 0; i < P; i++) {
 		r = pthread_join(threads[i], &status);
-
+  cout << arguments[i].id << endl;
 		if (r) {
 			printf("Eroare la asteptarea thread-ului %d\n", i);
 			exit(-1);
