@@ -24,8 +24,6 @@ pthread_barrier_t barrier;
 
 typedef struct t_arguments {
     int id; 
-    /* initial paragraph */
-    string paragraph;
     /* the result of a thread */
     string result;
     /* splitted sentence and size */
@@ -235,30 +233,20 @@ void *processFantasyThreads(void *arg) {
 
 int main() {
 
-    string str = "da, dar e tema 3 si mereu temele 3 au fost usoare plus ca e scrisa de Hogea, toate temele lui sunt accesibile";
+    string paragraph = "da, dar e tema 3 si mereu temele 3 au fost usoare plus ca e scrisa de Hogea, toate temele lui sunt accesibile";
     // string str = "Aceasta tema pare Imposibil de grea si Speram ca nu e imposibil sa o facem";
-    // // cout << duplicateConsonants(str) << "\n";
 
-    vector<string> result;
-    tokenize(str, result);
-
-    // string res;
-    // //processComedyString(result, res);
-    // //cout << res << "\n";
-
-
-    // // processFantasy(result, res);
-    // processScifi(result, res);
-    // cout << res << "\n";
-
+    vector<string> words;
+    pthread_t threads[P];
+    t_arguments *arguments;
+    string result;
     int r = 0;
     void *status;
-    pthread_t threads[P];
 
-    t_arguments *arguments;
+    tokenize(paragraph, words);
+
     arguments = (t_arguments*) malloc(P * sizeof(t_arguments));
 
-    
     pthread_barrier_init(&barrier, NULL, P);
 	if (r) {
 		printf("Cannot init barrier!\n");
@@ -266,17 +254,16 @@ int main() {
 
 	for (int i = 0; i < P; i++) {
 		arguments[i].id = i;
-        arguments[i].words = &result[0]; 
-        arguments[i].size = result.size();
+        arguments[i].words = &words[0]; 
+        arguments[i].size = words.size();
 
 		// r = pthread_create(&threads[i], NULL, processHorrorThreads, &arguments[i]);
 		r = pthread_create(&threads[i], NULL, processComedyThreads, &arguments[i]);
 		// r = pthread_create(&threads[i], NULL, processFantasyThreads, &arguments[i]);
 		// r = pthread_create(&threads[i], NULL, processScifiThreads, &arguments[i]);
 
-
 		if (r) {
-			printf("Eroare la crearea thread-stdului %d\n", i);
+			printf("Eroare la crearea thread-ului %d\n", i);
 			exit(-1);
 		}
 	}
@@ -289,21 +276,19 @@ int main() {
 		}
 	}
 
-    string finalString;
     /* compose the modified string */
     for (int i = 0; i < P; i++) {
-        finalString += (arguments[i].result);
-
-        // cout << arguments[i].result << endl;
+        result += (arguments[i].result);
     }
 
-    // cout << "_" << arguments[0].result << "_\n";
-    cout << finalString << "\n";
+    cout << result << "\n";
 
 	r = pthread_barrier_destroy(&barrier);
 	if (r) {
 		printf("Cannot destroy barrier.\n");
 	}
+
+    free(arguments);
 
     return 0;
 

@@ -14,7 +14,6 @@
 #define FANTASY 3
 #define SCIFI 4
 #define MAX_THREADS sysconf(_SC_NPROCESSORS_CONF)
-
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
 
@@ -22,12 +21,22 @@ using namespace std;
 
 int P = 2;
 
+pthread_barrier_t barrier;
+
+typedef struct t_arguments {
+    int id; 
+    /* the result of a thread */
+    string result;
+    /* splitted sentence and size */
+    string *words;
+    int size;
+
+} t_arguments;
+
 struct paragraph {
     std::string type;
     std::string buffer;
 } Paragraph;
-
-
 
 /* calculate number of threads for workers */ 
 int checkNumberOfThreads(int numberOfLines) {
@@ -43,32 +52,6 @@ void *readText(void *arg) {
   int id = *(int *)arg;
   
   pthread_exit(NULL);
-}
-
-bool isConsonant(char c) {
-    c = tolower(c);
-    /* if c is letter and is not vowel */
-    return (c >= 'a' && c <= 'z') && 
-            !(c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u');
-}
-
-/* return new buffer with consonants duplicated */
-string duplicateConsonants(string buffer) {
-    
-    // define empty string and construct a new buffer
-    string res = "";
-
-    int buffer_len = buffer.length();
-
-    for (int i = 0; i < buffer_len; i++) {
-        res += buffer[i];
-
-        if (isConsonant(buffer[i])) {
-            res += tolower(buffer[i]);
-        }
-    }
-
-    return res;
 }
 
 // http://www.joshbarczak.com/blog/?p=970
@@ -108,7 +91,7 @@ vector<string> tokenize(std::string &str, vector<string> &result) {
         *p = 0;
        // cout << token;
         result.push_back(token);
-        printf("_%s_\n", token);
+        // printf("_%s_\n", token);
 
 
         do {
@@ -119,6 +102,32 @@ vector<string> tokenize(std::string &str, vector<string> &result) {
     free(mutableString);
     return result;
 }
+
+bool isConsonant(char c) {
+    c = tolower(c);
+    /* if c is letter and is not vowel */
+    return (c >= 'a' && c <= 'z') && 
+            !(c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u');
+}
+
+string duplicateConsonants(string buffer) {
+    
+    // define empty string and construct a new buffer
+    string res = "";
+
+    int buffer_len = buffer.length();
+
+    for (int i = 0; i < buffer_len; i++) {
+        res += buffer[i];
+
+        if (isConsonant(buffer[i])) {
+            res += tolower(buffer[i]);
+        }
+    }
+
+    return res;
+}
+
 
 void processComedyString(vector<string> words, string &result) {
     for (int i = 0; i < words.size(); i++) {
@@ -145,24 +154,97 @@ void processScifi(vector<string> words, string &result) {
     }
 }
 
-/* duplicate even position of character */
-string duplicateEvenPosition(string buffer) {
-    
-    // define empty string and construct a new buffer
-    string res = "";
+void *processHorrorThreads(void *arg) {
 
-    int buffer_len = buffer.length();
+    t_arguments *args = (t_arguments*)(arg);
+    string *words = args->words;
+    int id = args->id;
+    int size = args->size;
 
-    for (int i = 0; i < buffer_len; i++) {
-        if (i % 2 == 0) {
-            res += buffer[i];
-        }
-    
-        res += buffer[i];
+    int start = id * (double)size / P;
+    int end = MIN((id + 1) * (double)size / P, size);
+
+    for (int i = start; i < end; i++) {
+        args->result += duplicateConsonants(words[i]);
+        args->result += " ";
     }
 
-    return res;
+	pthread_exit(NULL);
 }
+
+
+void processComedy(vector<string> words, string &result) {
+    for (int i = 0; i < words.size(); i++) {
+        for (int j = 0; j < words[i].length(); j++) {
+            result.push_back((words[i])[j]);
+            if ((j + 1) % 2 == 0) {
+                result.push_back((words[i])[j]);
+            }
+        }
+        result.push_back(' ');
+        // cout << "\n";
+    }
+}
+
+
+
+void *processComedyThreads(void *arg) {
+    
+    t_arguments *args = (t_arguments*)(arg);
+    string *words = args->words;
+    int id = args->id;
+    int size = args->size;
+
+    int start = id * (double)size / P;
+    int end = MIN((id + 1) * (double)size / P, size);
+
+    for (int i = start; i < end; i++) {
+        for (int j = 0; j < words[i].length(); j++) {
+            // cout << (words[i])[j] << " ";
+            if ((j + 1) % 2 == 0) {
+                args->result.push_back(toupper((words[i])[j]));
+            } else {
+                args->result.push_back((words[i])[j]);
+            }
+        }
+        args->result.push_back(' ');
+        // cout << "\n";
+    }
+
+	pthread_exit(NULL);
+}
+
+void processScifi(vector<string> words, string &result) {
+    for (int i = 0; i < words.size(); i++) {
+        if ((i + 1) % 6 == 0) {
+            reverse(words[i].begin(), words[i].end());
+        }
+        result += words[i];
+        result += " ";
+    }
+}
+
+void *processScifiThreads(void *arg) {
+
+    t_arguments *args = (t_arguments*)(arg);
+    string *words = args->words;
+    int id = args->id;
+    int size = args->size;
+
+    int start = id * (double)size / P;
+    int end = MIN((id + 1) * (double)size / P, size);
+
+    for (int i = start; i < end; i++) {
+        if ((i + 1) % 7 == 0) {
+            reverse(words[i].begin(), words[i].end());
+        }
+        args->result += words[i];
+        args->result += " ";
+    }
+
+	pthread_exit(NULL);
+}
+
 
 void processFantasy(vector<string> words, string &result) {
     for (int i = 0; i < words.size(); i++) {
@@ -174,15 +256,28 @@ void processFantasy(vector<string> words, string &result) {
     }
 }
 
-void *processFantasyThreads(void *arg) {
-    // int id = *(int *)arg;
-    vector<string> words = *(vector<string>)arg;
 
-    // print vector to test if it works
-    for (int i = 0; i < words.size(); i++) {
-        cout << words[i];
+void *processFantasyThreads(void *arg) {
+
+    t_arguments *args = (t_arguments*)(arg);
+    string *words = args->words;
+    int id = args->id;
+    int size = args->size;
+
+    int start = id * (double)size / P;
+    int end = MIN((id + 1) * (double)size / P, size);
+
+    for (int i = start; i < end; i++) {
+        if (islower((words[i])[0])) {
+            (words[i])[0] = toupper((words[i])[0]);
+        }
+        args->result += words[i];
+        args->result += " ";
     }
+
+	pthread_exit(NULL);
 }
+
 
 int main (int argc, char *argv[]) {
 
