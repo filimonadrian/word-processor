@@ -93,7 +93,6 @@ vector<string> tokenize(std::string &str, vector<string> &result) {
         result.push_back(token);
         // printf("_%s_\n", token);
 
-
         do {
             ++p;
         } while (*p && isDelim(*p));
