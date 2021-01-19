@@ -15,7 +15,12 @@
 #define SCIFI 4
 #define MAX_THREADS sysconf(_SC_NPROCESSORS_CONF)
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define BUFMAX 500
 
+const char COMEDY_NAME[7] = "comedy";
+const char HORROR_NAME[7] = "horror";
+const char FANTASY_NAME[8] = "fantasy";
+const char SCIFI_NAME[16] = "science-fiction";
 
 using namespace std; 
 
@@ -32,6 +37,7 @@ typedef struct read_arguments {
     /* vector of paragraph lines and the size */
     line *lines;
     int size;
+    char genre[20];
 
 } read_arguments;
 
@@ -92,17 +98,16 @@ bool isConsonant(char c) {
 }
 
 
-const char COMEDY_NAME[7] = "comedy";
-const char HORROR_NAME[7] = "horror";
-const char FANTASY_NAME[8] = "fantasy";
-const char SCIFI_NAME[16] = "science-fiction";
-
 void *read_file(void *arg) {
     FILE *fp;
 
     read_arguments *args = (read_arguments*)(arg);
     int id = args->id;
     line *lines = args->lines;
+    char genre[20];
+    strcpy(genre, args->genre);
+    bool isNewLineBefore = true;
+
     // int size = args->size;
     int size = 0;
     int line_NO = 0;
@@ -120,7 +125,7 @@ void *read_file(void *arg) {
 
             
             // if this is type of paragraph we need to read
-            if (!strncmp(line, COMEDY_NAME, 6)) {
+            if (!strncmp(line, genre, 6) && isNewLineBefore == true) {
                 // read the entire paragraph, keep a vector of lines(strings)
 
                 // memset(line, 0, sizeof(line));
@@ -131,10 +136,12 @@ void *read_file(void *arg) {
                     line_NO++;
 
                     if (!strcmp(line, "\n")) {
+                        isNewLineBefore = true;
                         break;
                     }
                     lines[size].data = line;
                     lines[size].NO = line_NO;
+                    isNewLineBefore = false;
 
                     size++;
 
@@ -153,11 +160,11 @@ void *read_file(void *arg) {
 
 int main() {
 
-    string paragraph = "da, dar e tema 3 si mereu temele 3 au fost usoare plus ca e scrisa de Hogea, toate temele lui sunt accesibile";
-    // string str = "Aceasta tema pare Imposibil de grea si Speram ca nu e imposibil sa o facem";
+    vector<line> horror_lines(2600);
+    vector<line> comedy_lines(2600);
+    vector<line> fantasy_lines(2600);
+    vector<line> scifi_lines(2600);
 
-    P = 1;
-    vector<line> lines(2600);
     pthread_t threads[P];
     read_arguments *arguments;
     string result;
@@ -172,9 +179,29 @@ int main() {
 	}
 
 	for (int i = 0; i < P; i++) {
+        switch (i) {
+
+            case (HORROR - 1):
+                strcpy(arguments[i].genre, HORROR_NAME);
+                arguments[i].lines = &horror_lines[0]; 
+                break;
+            case (COMEDY - 1):
+                strcpy(arguments[i].genre, COMEDY_NAME);
+                arguments[i].lines = &comedy_lines[0]; 
+                break;
+            case (FANTASY - 1): 
+                strcpy(arguments[i].genre, FANTASY_NAME);
+                arguments[i].lines = &fantasy_lines[0]; 
+                break;            
+            case (SCIFI - 1): 
+                strcpy(arguments[i].genre, SCIFI_NAME);
+                arguments[i].lines = &scifi_lines[0]; 
+                break;
+        }
+
 		arguments[i].id = i;
-        arguments[i].lines = &lines[0]; 
-        arguments[i].size = lines.size();
+        // arguments[i].lines = &lines[0]; 
+        // arguments[i].size = lines.size();
 
 		r = pthread_create(&threads[i], NULL, read_file, &arguments[i]);
 
@@ -193,7 +220,7 @@ int main() {
 	}
 
     for (int i = 0; i < 10; i++) {
-        cout << lines[i].NO << "  " << lines[i].data;
+        cout << horror_lines[i].NO << "  " << horror_lines[i].data;
     }
 
 	r = pthread_barrier_destroy(&barrier);
