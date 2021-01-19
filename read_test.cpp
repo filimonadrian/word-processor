@@ -123,8 +123,8 @@ void *read_file(void *arg) {
             fgets(line, 500, (FILE*)fp);
             line_NO++;
 
-            
-            // if this is type of paragraph we need to read
+            // if this is type of paragraph we want to read
+            // !!! problem with compare size
             if (!strncmp(line, genre, 6) && isNewLineBefore == true) {
                 // read the entire paragraph, keep a vector of lines(strings)
 
@@ -153,9 +153,9 @@ void *read_file(void *arg) {
             memset(line, 0, sizeof(line));
         }
     }
+    args->size = size;
     fclose(fp);
     pthread_exit(NULL);
-
 } 
 
 int main() {
@@ -201,7 +201,6 @@ int main() {
 
 		arguments[i].id = i;
         // arguments[i].lines = &lines[0]; 
-        // arguments[i].size = lines.size();
 
 		r = pthread_create(&threads[i], NULL, read_file, &arguments[i]);
 
@@ -219,9 +218,11 @@ int main() {
 		}
 	}
 
-    for (int i = 0; i < 10; i++) {
-        cout << horror_lines[i].NO << "  " << horror_lines[i].data;
+    for (int i = 0; i < 5; i++) {
+        // cout << horror_lines[i].NO << "  " << horror_lines[i].data;
     }
+
+    cout << arguments->size << "\n";
 
 	r = pthread_barrier_destroy(&barrier);
 	if (r) {

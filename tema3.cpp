@@ -3,9 +3,10 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <string>
-#include <vector>
 #include <unistd.h>
 #include <iostream> 
+#include <cstring>
+#include <vector>
 #include <bits/stdc++.h>
 
 #define MASTER 0
@@ -13,8 +14,24 @@
 #define COMEDY 2
 #define FANTASY 3
 #define SCIFI 4
+#define HORROR_THREAD 0
+#define COMEDY_THREAD 1
+#define FANTASY_THREAD 2
+#define SCIFI_THREAD 3
+
 #define MAX_THREADS sysconf(_SC_NPROCESSORS_CONF)
+
+#define MASTER_THREADS 4
+
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+
+#define BUFMAX 500
+
+const char COMEDY_NAME[7] = "comedy";
+const char HORROR_NAME[7] = "horror";
+const char FANTASY_NAME[8] = "fantasy";
+const char SCIFI_NAME[16] = "science-fiction";
 
 
 using namespace std;
@@ -23,6 +40,13 @@ int P = 2;
 
 pthread_barrier_t barrier;
 
+/* this is a line from a paragraph */
+typedef struct line {
+    int NO;
+    string data;
+} line;
+
+/* thread arguments */
 typedef struct t_arguments {
     int id; 
     /* the result of a thread */
@@ -32,11 +56,15 @@ typedef struct t_arguments {
     int size;
 
 } t_arguments;
+/* arguments for thread function that read the file */
+typedef struct read_arguments {
+    int id;
+    /* vector of paragraph lines and the size */
+    line *lines;
+    int size;
+    char genre[20];
 
-struct paragraph {
-    std::string type;
-    std::string buffer;
-} Paragraph;
+} read_arguments;
 
 /* calculate number of threads for workers */ 
 int checkNumberOfThreads(int numberOfLines) {
@@ -45,13 +73,6 @@ int checkNumberOfThreads(int numberOfLines) {
   P = nrThreads <= MAX_THREADS ? nrThreads : MAX_THREADS;
 
   return P;
-}
-
-/* read text from file */
-void *readText(void *arg) {
-  int id = *(int *)arg;
-  
-  pthread_exit(NULL);
 }
 
 // http://www.joshbarczak.com/blog/?p=970
@@ -142,17 +163,6 @@ void processComedyString(vector<string> words, string &result) {
     }
 }
 
-
-void processScifi(vector<string> words, string &result) {
-    for (int i = 0; i < words.size(); i++) {
-        if ((i + 1) % 6 == 0) {
-            reverse(words[i].begin(), words[i].end());
-        }
-        result += words[i];
-        result += " ";
-    }
-}
-
 void *processHorrorThreads(void *arg) {
 
     t_arguments *args = (t_arguments*)(arg);
@@ -184,8 +194,6 @@ void processComedy(vector<string> words, string &result) {
         // cout << "\n";
     }
 }
-
-
 
 void *processComedyThreads(void *arg) {
     
@@ -277,6 +285,66 @@ void *processFantasyThreads(void *arg) {
 	pthread_exit(NULL);
 }
 
+/* read file  */
+void *read_file(void *arg) {
+    FILE *fp;
+
+    read_arguments *args = (read_arguments*)(arg);
+    int id = args->id;
+    line *lines = args->lines;
+    char genre[20];
+    strcpy(genre, args->genre);
+    bool isNewLineBefore = true;
+
+    // int size = args->size;
+    int size = 0;
+    int line_NO = 0;
+
+    // buffer which keeps the data
+    char line[501];
+    fp = fopen("input1.in", "r");
+
+    if (fp == NULL) {
+        printf("Error! Can't open this file.\n");
+    } else {
+        while (!feof(fp)) {
+            fgets(line, 500, (FILE*)fp);
+            line_NO++;
+
+            
+            // if this is type of paragraph we need to read
+            if (!strncmp(line, genre, 6) && isNewLineBefore == true) {
+                // read the entire paragraph, keep a vector of lines(strings)
+
+                // memset(line, 0, sizeof(line));
+                // while paragraph is not finished
+                while (strcmp(line, "\n") && !feof(fp)) {
+                    memset(line, 0, sizeof(line));
+                    fgets(line, 500, (FILE*)fp);
+                    line_NO++;
+
+                    if (!strcmp(line, "\n")) {
+                        isNewLineBefore = true;
+                        break;
+                    }
+                    lines[size].data = line;
+                    lines[size].NO = line_NO;
+                    isNewLineBefore = false;
+
+                    size++;
+
+                    // printf("%s", line);
+                }
+
+            }
+            // printf("%s", line);
+            memset(line, 0, sizeof(line));
+        }
+    }
+    args->size = size;
+    fclose(fp);
+    pthread_exit(NULL);
+}
 
 int main (int argc, char *argv[]) {
 
@@ -293,48 +361,72 @@ int main (int argc, char *argv[]) {
         return 0;
     }
 
-    // How many numbers will be sent.
-    int send_numbers = 10;
-    int value = 0, ret = 0;
+    vector<line> horror_lines(2600);
+    vector<line> comedy_lines(2600);
+    vector<line> fantasy_lines(2600);
+    vector<line> scifi_lines(2600);
+
+    vector<string> words;
+    t_arguments *thread_args;
+    read_arguments *read_args;
+    string result;
+    int r = 0;
+    void *status;
+
 
     if (rank == MASTER) {
-        
+        pthread_t threads[MASTER_THREADS];
+        read_args = (read_arguments*) malloc(MASTER_THREADS * sizeof(read_arguments));
 
-        // Generate the random numbers.
-        // Generate the random tags.
-        // Sends the numbers with the tags to the second process.
-        // Generate a random number.
-        for (int i = 0; i < send_numbers; i++) {
+        for (int i = 0; i < MASTER_THREADS; i++) {
+            switch (i) {
+                
+                /* genre - 1 because threads start from 0
+                * but processes starts from 1
+                */
+                case (HORROR_THREAD):
+                    strcpy(read_args[i].genre, HORROR_NAME);
+                    /* get the ref of std::vector as an simple array */ 
+                    read_args[i].lines = &horror_lines[0];
+                    break;
+                case (COMEDY_THREAD):
+                    strcpy(read_args[i].genre, COMEDY_NAME);
+                    read_args[i].lines = &comedy_lines[0]; 
+                    break;
+                case (FANTASY_THREAD): 
+                    strcpy(read_args[i].genre, FANTASY_NAME);
+                    read_args[i].lines = &fantasy_lines[0]; 
+                    break;
+                case (SCIFI_THREAD): 
+                    strcpy(read_args[i].genre, SCIFI_NAME);
+                    read_args[i].lines = &scifi_lines[0]; 
+                    break;
+            }
 
-            value = 10;
+            read_args[i].id = i;
+            // arguments[i].lines = &lines[0]; 
+            // arguments[i].size = lines.size();
 
-            printf("Process [%d] send %d with tag %d.\n", rank, value, i);
-            
-            // Sends the value to the MASTER process.
-            ret = MPI_Send(&value, 1, MPI_INT, 1, i, MPI_COMM_WORLD);
-            if (ret != 0) {
-              printf("Can't send data. I am process %d", rank);
+            r = pthread_create(&threads[i], NULL, read_file, &read_args[i]);
+
+            if (r) {
+                printf("Can't create thread %d!\n", i);
+                exit(-1);
             }
         }
 
+        for (int i = 0; i < P; i++) {
+            r = pthread_join(threads[i], &status);
+            if (r) {
+                printf("Can't wait thread %d!\n", i);
+                exit(-1);
+            }
+	    }
+
+        free(read_args);
+
     } else if (rank == HORROR) {
 
-        // Receives the information from the first process.
-        // Prints the numbers with their corresponding tags.
-
-        MPI_Status status;
-        int recv_msg = 0;
-        while (recv_msg < send_numbers) {
-          ret = MPI_Recv(&value, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-          
-          if (ret != 0) {
-            printf("Can't receive data. I am process %d", rank);
-          }
-
-          printf("Received from process %d number %d with tag %d\n",
-                status.MPI_SOURCE, value, status.MPI_TAG);
-          recv_msg++;
-        }
     } else if (rank == COMEDY) {
     
     } else if (rank == FANTASY) {
