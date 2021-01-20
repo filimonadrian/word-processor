@@ -20,6 +20,8 @@
 #define SCIFI_THREAD 3
 
 #define MAX_THREADS sysconf(_SC_NPROCESSORS_CONF)
+#define MIN_THREADS 2
+
 #define MAX_LINES_THREAD 20
 #define MASTER_THREADS 4
 
@@ -41,7 +43,7 @@ pthread_barrier_t barrier;
 /* this is a line from a paragraph */
 typedef struct __attribute__((__packed__)) line {
     // string data;
-    char data[100];
+    char data[500];
     int NO;
 } paragraph_line;
 
@@ -69,14 +71,18 @@ typedef struct read_arguments {
 /* calculate number of threads for workers */ 
 int checkNumberOfThreads(int numberOfLines) {
 
-    /* at least 1 thread for reading */
+    /* at least 1 thread for reading and 1 for processing*/
     int nr_threads = 1;
-    int worker_threads;
     
-    nr_threads += numberOfLines / MAX_LINES_THREAD;
-    worker_threads = nr_threads <= MAX_THREADS ? nr_threads : MAX_THREADS;
+    int proc = ceil((double)numberOfLines / MAX_LINES_THREAD);
+    if (!proc) {
+        return MIN_THREADS;
+    }
 
-  return worker_threads;
+    nr_threads += proc;
+    nr_threads = nr_threads <= MAX_THREADS ? nr_threads : MAX_THREADS;
+
+  return nr_threads;
 }
 
 // http://www.joshbarczak.com/blog/?p=970
@@ -327,10 +333,6 @@ void *read_file(void *arg) {
                 // while paragraph is not finished
                 while (strcmp(line, newline) && !feof(fp)) {
 
-                    /* notify the worker that it must receive more data */
-                    send_to_worker = 1;
-                    MPI_Send(&send_to_worker, 1, MPI_INT, id + 1, 0, MPI_COMM_WORLD);
-
                     /* read lines from the paragraph */
                     memset(line, 0, sizeof(line));
                     fgets(line, sizeof(line) - 1, (FILE*)fp);
@@ -338,6 +340,11 @@ void *read_file(void *arg) {
 
                     /* the end of the paragraph */
                     if (!strcmp(line, newline)) {
+
+                        /* notify the worker that it must receive more data */
+                        send_to_worker = 1;
+                        MPI_Send(&send_to_worker, 1, MPI_INT, id + 1, 0, MPI_COMM_WORLD);
+
                         isNewLineBefore = true;
 
                         /* send paragraph to workers and reset paragraph */
@@ -459,7 +466,8 @@ int main (int argc, char *argv[]) {
 
     } else if (rank == HORROR) {
 
-        int receive_flag = 1;
+        int receive_flag;
+        MPI_Recv(&receive_flag, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
 
         while (receive_flag) {
         
@@ -471,9 +479,12 @@ int main (int argc, char *argv[]) {
             ret = MPI_Recv(&paragraph_size, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
             ret = MPI_Recv(lines, paragraph_size * sizeof(struct line), MPI_BYTE, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
 
+
             /* calculate number of threads */
             nr_threads = checkNumberOfThreads(paragraph_size);
             
+            /* first thread receives data from master */
+
             string str = lines[0].data;
             tokenize(str, words);
             /* create the threads and separate the work for every thread */
@@ -507,13 +518,16 @@ int main (int argc, char *argv[]) {
 
             cout << result << "\n";
 
-            /* print lines that i've received */
+
+            
+            // /* print lines that i've received */
             // for (int i = 0; i < paragraph_size; i++) {
             //     printf("%s", lines[i].data);
             // }
-
+            
             /* receive signal for reading from master */
             MPI_Recv(&receive_flag, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
+
         }
 
     } else if (rank == COMEDY) {
