@@ -35,7 +35,7 @@ typedef struct t_arguments {
 // http://www.joshbarczak.com/blog/?p=970
 // manual solution works faster
 static bool isDelim(char c) {
-    const char* DELIMS = " \n\t";
+    const char* DELIMS = " ";
 
     do {
         if (c == *DELIMS) {
@@ -233,9 +233,8 @@ void *processFantasyThreads(void *arg) {
 
 int main() {
 
-    string paragraph = "da, dar e tema 3 si mereu temele 3 au fost usoare plus ca e scrisa de Hogea, toate temele lui sunt accesibile";
+    string paragraph = "Aceasta tema pare\nImposibil de grea si\nSperam ca nu e imposibil sa o facem\n";
     // string str = "Aceasta tema pare Imposibil de grea si Speram ca nu e imposibil sa o facem";
-
     vector<string> words;
     pthread_t threads[P];
     t_arguments *thread_args;
@@ -257,8 +256,8 @@ int main() {
         thread_args[i].words = &words[0]; 
         thread_args[i].size = words.size();
 
-		// r = pthread_create(&threads[i], NULL, processHorrorThreads, &thread_args[i]);
-		r = pthread_create(&threads[i], NULL, processComedyThreads, &thread_args[i]);
+		r = pthread_create(&threads[i], NULL, processHorrorThreads, &thread_args[i]);
+		// r = pthread_create(&threads[i], NULL, processComedyThreads, &thread_args[i]);
 		// r = pthread_create(&threads[i], NULL, processFantasyThreads, &thread_args[i]);
 		// r = pthread_create(&threads[i], NULL, processScifiThreads, &thread_args[i]);
 

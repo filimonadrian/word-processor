@@ -25,7 +25,7 @@ const char newline[2] = "\n";
 
 using namespace std; 
 
-int P = 4;
+int P = 1;
 pthread_barrier_t barrier;
 
 typedef struct line {

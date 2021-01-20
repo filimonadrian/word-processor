@@ -28,7 +28,7 @@
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
-#define BUFMAX 500
+#define BUFMAX 99999999
 
 const char COMEDY_NAME[7] = "comedy";
 const char HORROR_NAME[7] = "horror";
@@ -52,7 +52,8 @@ typedef struct t_arguments {
     int id;
     int nr_threads;
     /* the result of a thread */
-    string result;
+    // string result;
+    char result[99999999];
     /* splitted sentence and size */
     string *words;
     int size;
@@ -88,7 +89,7 @@ int checkNumberOfThreads(int numberOfLines) {
 // http://www.joshbarczak.com/blog/?p=970
 // manual solution works faster
 static bool isDelim(char c) {
-    const char* DELIMS = " \n\t";
+    const char* DELIMS = " ";
 
     do {
         if (c == *DELIMS) {
@@ -158,21 +159,6 @@ string duplicateConsonants(string buffer) {
     return res;
 }
 
-
-void processComedyString(vector<string> words, string &result) {
-    for (int i = 0; i < words.size(); i++) {
-        for (int j = 0; j < words[i].length(); j++) {
-            // cout << (words[i])[j] << " ";
-            result.push_back((words[i])[j]);
-            if ((j + 1) % 2 == 0) {
-                result.push_back((words[i])[j]);
-            }
-        }
-        result.push_back(' ');
-        // cout << "\n";
-    }
-}
-
 void *processHorrorThreads(void *arg) {
 
     t_arguments *args = (t_arguments*)(arg);
@@ -180,124 +166,146 @@ void *processHorrorThreads(void *arg) {
     int id = args->id;
     int nr_threads = args->nr_threads;
     int size = args->size;
+    string rez;
 
     int start = id * (double)size / nr_threads;
     int end = MIN((id + 1) * (double)size / nr_threads, size);
 
     for (int i = start; i < end; i++) {
-        args->result += duplicateConsonants(words[i]);
-        args->result += " ";
     }
+
+    for (int i = start; i < end; i++) {
+        rez += duplicateConsonants(words[i]);
+        // cout << words[i];
+        rez += " ";
+    }
+    strcpy(args->result, rez.c_str());
 
 	pthread_exit(NULL);
 }
 
+// void processComedyString(vector<string> words, string &result) {
+//     for (int i = 0; i < words.size(); i++) {
+//         for (int j = 0; j < words[i].length(); j++) {
+//             // cout << (words[i])[j] << " ";
+//             result.push_back((words[i])[j]);
+//             if ((j + 1) % 2 == 0) {
+//                 result.push_back((words[i])[j]);
+//             }
+//         }
+//         result.push_back(' ');
+//         // cout << "\n";
+//     }
+// }
 
-void processComedy(vector<string> words, string &result) {
-    for (int i = 0; i < words.size(); i++) {
-        for (int j = 0; j < words[i].length(); j++) {
-            result.push_back((words[i])[j]);
-            if ((j + 1) % 2 == 0) {
-                result.push_back((words[i])[j]);
-            }
-        }
-        result.push_back(' ');
-        // cout << "\n";
-    }
-}
 
-void *processComedyThreads(void *arg) {
+
+// void processComedy(vector<string> words, string &result) {
+//     for (int i = 0; i < words.size(); i++) {
+//         for (int j = 0; j < words[i].length(); j++) {
+//             result.push_back((words[i])[j]);
+//             if ((j + 1) % 2 == 0) {
+//                 result.push_back((words[i])[j]);
+//             }
+//         }
+//         result.push_back(' ');
+//         // cout << "\n";
+//     }
+// }
+
+// void *processComedyThreads(void *arg) {
     
-    t_arguments *args = (t_arguments*)(arg);
-    string *words = args->words;
-    int id = args->id;
-    int nr_threads = args->nr_threads;
-    int size = args->size;
+//     t_arguments *args = (t_arguments*)(arg);
+//     string *words = args->words;
+//     int id = args->id;
+//     int nr_threads = args->nr_threads;
+//     int size = args->size;
 
-    int start = id * (double)size / nr_threads;
-    int end = MIN((id + 1) * (double)size / nr_threads, size);
+//     int start = id * (double)size / nr_threads;
+//     int end = MIN((id + 1) * (double)size / nr_threads, size);
 
-    for (int i = start; i < end; i++) {
-        for (int j = 0; j < words[i].length(); j++) {
-            // cout << (words[i])[j] << " ";
-            if ((j + 1) % 2 == 0) {
-                args->result.push_back(toupper((words[i])[j]));
-            } else {
-                args->result.push_back((words[i])[j]);
-            }
-        }
-        args->result.push_back(' ');
-        // cout << "\n";
-    }
+//     for (int i = start; i < end; i++) {
+//         for (int j = 0; j < words[i].length(); j++) {
+//             // cout << (words[i])[j] << " ";
+//             if ((j + 1) % 2 == 0) {
+//                 args->result.push_back(toupper((words[i])[j]));
+//             } else {
+//                 args->result.push_back((words[i])[j]);
+//             }
+//         }
+//         args->result.push_back(' ');
+//         // cout << "\n";
+//     }
 
-	pthread_exit(NULL);
-}
+// 	pthread_exit(NULL);
+// }
 
-void processScifi(vector<string> words, string &result) {
-    for (int i = 0; i < words.size(); i++) {
-        if ((i + 1) % 6 == 0) {
-            reverse(words[i].begin(), words[i].end());
-        }
-        result += words[i];
-        result += " ";
-    }
-}
+// void processScifi(vector<string> words, string &result) {
+//     for (int i = 0; i < words.size(); i++) {
+//         if ((i + 1) % 6 == 0) {
+//             reverse(words[i].begin(), words[i].end());
+//         }
+//         result += words[i];
+//         result += " ";
+//     }
+// }
 
-void *processScifiThreads(void *arg) {
+// void *processScifiThreads(void *arg) {
 
-    t_arguments *args = (t_arguments*)(arg);
-    string *words = args->words;
-    int id = args->id;
-    int nr_threads = args->nr_threads;
-    int size = args->size;
+//     t_arguments *args = (t_arguments*)(arg);
+//     string *words = args->words;
+//     int id = args->id;
+//     int nr_threads = args->nr_threads;
+//     int size = args->size;
 
-    int start = id * (double)size / nr_threads;
-    int end = MIN((id + 1) * (double)size / nr_threads, size);
+//     int start = id * (double)size / nr_threads;
+//     int end = MIN((id + 1) * (double)size / nr_threads, size);
 
-    for (int i = start; i < end; i++) {
-        if ((i + 1) % 7 == 0) {
-            reverse(words[i].begin(), words[i].end());
-        }
-        args->result += words[i];
-        args->result += " ";
-    }
+//     for (int i = start; i < end; i++) {
+//         if ((i + 1) % 7 == 0) {
+//             reverse(words[i].begin(), words[i].end());
+//         }
+//         args->result += words[i];
+//         args->result += " ";
+//     }
 
-	pthread_exit(NULL);
-}
-
-
-void processFantasy(vector<string> words, string &result) {
-    for (int i = 0; i < words.size(); i++) {
-        if (islower((words[i])[0])) {
-            (words[i])[0] = toupper((words[i])[0]);
-        }
-        result += words[i];
-        result += " ";
-    }
-}
+// 	pthread_exit(NULL);
+// }
 
 
-void *processFantasyThreads(void *arg) {
+// void processFantasy(vector<string> words, string &result) {
+//     for (int i = 0; i < words.size(); i++) {
+//         if (islower((words[i])[0])) {
+//             (words[i])[0] = toupper((words[i])[0]);
+//         }
+//         result += words[i];
+//         result += " ";
+//     }
+// }
 
-    t_arguments *args = (t_arguments*)(arg);
-    string *words = args->words;
-    int id = args->id;
-    int nr_threads = args->nr_threads;
-    int size = args->size;
 
-    int start = id * (double)size / nr_threads;
-    int end = MIN((id + 1) * (double)size / nr_threads, size);
+// void *processFantasyThreads(void *arg) {
 
-    for (int i = start; i < end; i++) {
-        if (islower((words[i])[0])) {
-            (words[i])[0] = toupper((words[i])[0]);
-        }
-        args->result += words[i];
-        args->result += " ";
-    }
+//     t_arguments *args = (t_arguments*)(arg);
+//     string *words = args->words;
+//     int id = args->id;
+//     int nr_threads = args->nr_threads;
+//     int size = args->size;
 
-	pthread_exit(NULL);
-}
+//     int start = id * (double)size / nr_threads;
+//     int end = MIN((id + 1) * (double)size / nr_threads, size);
+
+//     for (int i = start; i < end; i++) {
+//         if (islower((words[i])[0])) {
+//             (words[i])[0] = toupper((words[i])[0]);
+//         }
+//         args->result += words[i];
+//         args->result += " ";
+//     }
+
+// 	pthread_exit(NULL);
+// }
+
 /* read file  */
 void *read_file(void *arg) {
     FILE *fp;
@@ -349,11 +357,7 @@ void *read_file(void *arg) {
                         /* send paragraph to workers and reset paragraph */
                         ret = MPI_Send(&paragraph_size, 1, MPI_INT, id + 1, 0, MPI_COMM_WORLD);
                         ret = MPI_Send(lines, paragraph_size * sizeof(struct line), MPI_BYTE, id + 1, 0, MPI_COMM_WORLD);
-                        for (int i = 0; i < paragraph_size; i++) {
-                             printf("%s", lines[i].data);
-                        }
-                        printf("\n");
-                        // memset(lines, 0, sizeof(lines));
+
                         paragraph_size = 0;
 
                         break;
@@ -426,7 +430,7 @@ int main (int argc, char *argv[]) {
     vector<line> scifi_lines(2600);
 
     vector<string> words;
-    t_arguments *thread_args;
+    t_arguments *thread_args = (t_arguments*) malloc(MAX_THREADS * sizeof(t_arguments));
     read_arguments *read_args;
     pthread_t threads[MAX_THREADS];
     string result;
@@ -436,8 +440,12 @@ int main (int argc, char *argv[]) {
     char line[600];
 
     paragraph_line *lines = (paragraph_line* ) malloc(2600 * sizeof(paragraph_line));
+    paragraph_line *result_paragraphs = (paragraph_line *) malloc (3000 * sizeof(paragraph_line));
+    int result_paragraphs_size = 0;
 
     int paragraph_size = 0, nr_threads = 0;
+
+
 
     if (rank == MASTER) {
         pthread_t threads[MASTER_THREADS];
@@ -499,29 +507,72 @@ int main (int argc, char *argv[]) {
             
             memset(lines, 0, sizeof(lines));
 
-            /* first thread receives data from master */
+            /* last thread receives data from master */
             /**************************/
-            /*
-            exit and RELEASE BARRIER 
-            */
+
             read_args = (read_arguments*) malloc(sizeof(read_arguments));
             read_args[0].id = 0;
             read_args[0].lines = &lines[0]; 
-            r = pthread_create(&threads[0], NULL, receiveFromMaster, &read_args[0]);
+            r = pthread_create(&threads[MAX_THREADS - 1], NULL, receiveFromMaster, &read_args[0]);
 
-            pthread_join(threads[0], &thread_status);
+            pthread_join(threads[MAX_THREADS - 1], &thread_status);
             /***********************/
             
             paragraph_size = read_args->size;
 
             /* calculate number of threads */
             nr_threads = checkNumberOfThreads(paragraph_size);
-            
+            int proc_threads = nr_threads - 1;
             
             /**OTHER THREADSs*********************/
 
+            /* tokenize string  and send to processing threads */
+            string paragraph;
+            for (int i = 0; i < paragraph_size; i++) {
+                paragraph += lines[i].data;
+            }
 
+            tokenize(paragraph, words);
+            
+            /* create the threads and separate the work for every thread */
+            for (int i = 0; i < proc_threads; i++) {
 
+                thread_args[i].id = i;
+                thread_args[i].nr_threads = proc_threads;
+                thread_args[i].words = &words[0]; 
+                thread_args[i].size = words.size();
+
+                r = pthread_create(&threads[i], NULL, processHorrorThreads, &thread_args[i]);
+
+                if (r) {
+                    printf("Can't create thread %d!\n", i);
+                    exit(1);
+                }
+            }
+
+            /* wait threads to finish processing */
+            for (int i = 0; i < proc_threads; i++) {
+                r = pthread_join(threads[i], &thread_status);
+                if (r) {
+                    printf("Can't wait thread %d!\n", i);
+                    exit(1);
+                }
+	        }
+
+            /* compose the modified paragraph */
+            for (int i = 0; i < proc_threads; i++) {
+                string rez = thread_args[i].result;
+                result += rez;
+            }
+
+            cout << result << "\n";
+
+            /* keep processed data to send data back to master for writing in file */
+            strcpy(result_paragraphs[result_paragraphs_size].data, result.c_str());
+            result_paragraphs[result_paragraphs_size].NO = lines[0].NO;
+            result_paragraphs_size++;
+            // cout << result_paragraphs[result_paragraphs_size - 1].data;
+            // cout << result_paragraphs[result_paragraphs_size - 1].NO << endl;
             /**OTHER THREADSs*********************/
 
             
@@ -532,8 +583,14 @@ int main (int argc, char *argv[]) {
             
             /* receive signal for reading from master */
             MPI_Recv(&receive_flag, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
-
+            result.clear();
+            memset(thread_args, 0, MAX_THREADS * sizeof(t_arguments));
+            memset(read_args, 0, sizeof(read_arguments));
+            words.clear();
         }
+        /* these were all paragraphs. Now send to master processed text */
+
+        MPI_Send(result_paragraphs, result_paragraphs_size * sizeof(struct line), MPI_BYTE, MASTER, 0, MPI_COMM_WORLD);
 
     } else if (rank == COMEDY) {
     
