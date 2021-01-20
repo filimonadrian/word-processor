@@ -28,7 +28,7 @@
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
-#define BUFMAX 99999999
+#define BUFMAX 999999
 
 const char COMEDY_NAME[7] = "comedy";
 const char HORROR_NAME[7] = "horror";
@@ -53,7 +53,7 @@ typedef struct t_arguments {
     int nr_threads;
     /* the result of a thread */
     // string result;
-    char result[99999999];
+    char result[999999];
     /* splitted sentence and size */
     string *words;
     int size;
@@ -134,6 +134,16 @@ vector<string> tokenize(std::string &str, vector<string> &result) {
     return result;
 }
 
+
+vector<string> tokenize2(std::string &str, vector<string> &result) {
+    stringstream check1(str);
+    string token;
+    while (getline(check1, token, ' ')) {
+        result.push_back(token);
+    }
+    return result;
+}
+
 bool isConsonant(char c) {
     c = tolower(c);
     /* if c is letter and is not vowel */
@@ -171,14 +181,21 @@ void *processHorrorThreads(void *arg) {
     int start = id * (double)size / nr_threads;
     int end = MIN((id + 1) * (double)size / nr_threads, size);
 
-    for (int i = start; i < end; i++) {
-    }
+    // for (int i = start; i < end; i++) {
+    //     cout << "__" << words[i] << "__\n";
+    // }
 
     for (int i = start; i < end; i++) {
         rez += duplicateConsonants(words[i]);
+        // rez += words[i];
         rez += " ";
+        // cout << "__" << rez << "__\n";
     }
+
+    // cout << "Din thread: " << rez << endl;
     strcpy(args->result, rez.c_str());
+    strcat(args->result, "\0");
+
 
 	pthread_exit(NULL);
 }
@@ -357,7 +374,7 @@ void *read_file(void *arg) {
             /* if this is type of paragraph we want to read */
             if (!strncmp(line, args->genre, strlen(genre)) && isNewLineBefore == true) {
 
-                // while paragraph is not finished
+                /* while paragraph is not finished */
                 while (strcmp(line, newline) && !feof(fp)) {
 
                     /* read lines from the paragraph */
@@ -385,11 +402,11 @@ void *read_file(void *arg) {
                     }
 
                     strcpy(lines[paragraph_size].data, line);
+                    strcat(lines[paragraph_size].data, "\0");
                     lines[paragraph_size].NO = line_NO;
                     isNewLineBefore = false;
                     paragraph_size++;
 
-                    // printf("%s", line);
                 }
 
             }
@@ -399,7 +416,6 @@ void *read_file(void *arg) {
                 isNewLineBefore = false;
             }
             
-            // printf("%s", line);
             memset(line, 0, sizeof(line));
         }
     }
@@ -437,8 +453,6 @@ bool paragraphs_order(const paragraph_line& a, const paragraph_line& b){
 int main (int argc, char *argv[]) {
 
     int  numTasks, rank, provided, ret = 0;
-
-    // MPI_Init(&argc, &argv);
 
     MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
     MPI_Comm_size(MPI_COMM_WORLD, &numTasks);
@@ -507,7 +521,7 @@ int main (int argc, char *argv[]) {
                     break;
             }
 
-            r = pthread_create(&threads[i], NULL, read_file, &read_args[i]);
+            pthread_create(&threads[i], NULL, read_file, &read_args[i]);
 
             if (r) {
                 printf("Can't create thread %d!\n", i);
@@ -516,7 +530,7 @@ int main (int argc, char *argv[]) {
         }
 
         for (int i = 0; i < MASTER_THREADS; i++) {
-            r = pthread_join(threads[i], &thread_status);
+            pthread_join(threads[i], &thread_status);
             if (r) {
                 printf("Can't wait thread %d!\n", i);
                 exit(1);
@@ -566,17 +580,8 @@ int main (int argc, char *argv[]) {
         for (int i = 0; i < result_scifi_size; i++) {
             final_result.push_back(result_scifi[i]);
         }
-
-        // final_result.insert(final_result.end(), result_horror.begin(), result_horror.end());
-        // final_result.insert(final_result.end(), result_comedy.begin(), result_comedy.end());
-        // final_result.insert(final_result.end(), result_fantasy.begin(), result_fantasy.end());
-        // final_result.insert(final_result.end(), result_scifi.begin(), result_scifi.end());
         
         sort(final_result.begin(), final_result.end(), paragraphs_order);
-
-        // for (int i = 0; i < nr_paragraphs - 1; i++) {
-        //     cout << final_result[i].data << endl;
-        // }
 
         /* write result */
         write_output(final_result, "output.out");
@@ -607,15 +612,14 @@ int main (int argc, char *argv[]) {
             nr_threads = checkNumberOfThreads(paragraph_size);
             int proc_threads = nr_threads - 1;
             
-            /**OTHER THREADSs*********************/
-
             /* tokenize string  and send to processing threads */
             string paragraph;
             for (int i = 0; i < paragraph_size; i++) {
                 paragraph += lines[i].data;
             }
+            // cout << paragraph;
 
-            tokenize(paragraph, words);
+            tokenize2(paragraph, words);
             
             /* create the threads and separate the work for every thread */
             for (int i = 0; i < proc_threads; i++) {
@@ -650,21 +654,10 @@ int main (int argc, char *argv[]) {
                 result += rez;
             }
 
-            // cout << result << "\n";
-
             /* keep processed data to send data back to master for writing in file */
             strcpy(result_paragraphs[result_paragraphs_size].data, result.c_str());
             result_paragraphs[result_paragraphs_size].NO = lines[0].NO;
             result_paragraphs_size++;
-            // cout << result_paragraphs[result_paragraphs_size - 1].data;
-            // cout << result_paragraphs[result_paragraphs_size - 1].NO << endl;
-            /**OTHER THREADSs*********************/
-
-            
-            /* print lines that i've received */
-            for (int i = 0; i < paragraph_size; i++) {
-                // printf("%s", lines[i].data);
-            }
             
             /* receive signal for reading from master */
             MPI_Recv(&receive_flag, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
@@ -712,7 +705,7 @@ int main (int argc, char *argv[]) {
                 paragraph += lines[i].data;
             }
 
-            tokenize(paragraph, words);
+            tokenize2(paragraph, words);
             
             /* create the threads and separate the work for every thread */
             for (int i = 0; i < proc_threads; i++) {
@@ -808,7 +801,7 @@ int main (int argc, char *argv[]) {
                 paragraph += lines[i].data;
             }
 
-            tokenize(paragraph, words);
+            tokenize2(paragraph, words);
             
             /* create the threads and separate the work for every thread */
             for (int i = 0; i < proc_threads; i++) {
@@ -904,7 +897,7 @@ int main (int argc, char *argv[]) {
                 paragraph += lines[i].data;
             }
 
-            tokenize(paragraph, words);
+            tokenize2(paragraph, words);
             
             /* create the threads and separate the work for every thread */
             for (int i = 0; i < proc_threads; i++) {
