@@ -321,6 +321,7 @@ void *read_file(void *arg) {
     int paragraph_size = 0;
     int line_NO = 0;
     int send_to_worker;
+    int nr_paragraps = 0;
 
     /* buffer reader */
     char line[501];
@@ -359,6 +360,7 @@ void *read_file(void *arg) {
                         ret = MPI_Send(lines, paragraph_size * sizeof(struct line), MPI_BYTE, id + 1, 0, MPI_COMM_WORLD);
 
                         paragraph_size = 0;
+                        nr_paragraps++;
 
                         break;
                     }
@@ -387,7 +389,7 @@ void *read_file(void *arg) {
     send_to_worker = 0;
     MPI_Send(&send_to_worker, 1, MPI_INT, id + 1, 0, MPI_COMM_WORLD);
     
-    args->size = paragraph_size;
+    args->size = nr_paragraps++;
     free(lines);
     fclose(fp);
     pthread_exit(NULL);
@@ -424,10 +426,10 @@ int main (int argc, char *argv[]) {
         return 0;
     }
 
-    vector<line> horror_lines(2600);
-    vector<line> comedy_lines(2600);
-    vector<line> fantasy_lines(2600);
-    vector<line> scifi_lines(2600);
+    vector<paragraph_line> result_horror(3000);
+    vector<paragraph_line> result_comedy(3000);
+    vector<paragraph_line> result_fantasy(3000);
+    vector<paragraph_line> result_scifi(3000);
 
     vector<string> words;
     t_arguments *thread_args = (t_arguments*) malloc(MAX_THREADS * sizeof(t_arguments));
@@ -440,14 +442,15 @@ int main (int argc, char *argv[]) {
     char line[600];
 
     paragraph_line *lines = (paragraph_line* ) malloc(2600 * sizeof(paragraph_line));
-    paragraph_line *result_paragraphs = (paragraph_line *) malloc (3000 * sizeof(paragraph_line));
+    // paragraph_line *result_paragraphs = (paragraph_line *) malloc (2900 * sizeof(paragraph_line));
+    vector<paragraph_line> result_paragraphs(3000);
     int result_paragraphs_size = 0;
 
     int paragraph_size = 0, nr_threads = 0;
 
 
-
     if (rank == MASTER) {
+        int nr_paragrahs = 0;
         pthread_t threads[MASTER_THREADS];
         read_args = (read_arguments*) malloc(MASTER_THREADS * sizeof(read_arguments));
 
@@ -455,26 +458,17 @@ int main (int argc, char *argv[]) {
             read_args[i].id = i;
 
             switch (i) {
-                
-                /* genre - 1 because threads start from 0
-                * but processes starts from 1
-                */
                 case (HORROR_THREAD):
                     strcpy(read_args[i].genre, HORROR_NAME);
-                    /* get the ref of std::vector as an simple array */ 
-                    // read_args[i].lines = &horror_lines[0];
                     break;
                 case (COMEDY_THREAD):
-                    strcpy(read_args[i].genre, COMEDY_NAME);
-                    // read_args[i].lines = &comedy_lines[0]; 
+                    strcpy(read_args[i].genre, COMEDY_NAME); 
                     break;
                 case (FANTASY_THREAD): 
                     strcpy(read_args[i].genre, FANTASY_NAME);
-                    // read_args[i].lines = &fantasy_lines[0]; 
                     break;
                 case (SCIFI_THREAD): 
                     strcpy(read_args[i].genre, SCIFI_NAME);
-                    // read_args[i].lines = &scifi_lines[0]; 
                     break;
             }
 
@@ -493,10 +487,45 @@ int main (int argc, char *argv[]) {
                 exit(1);
             }
 	    }
+       
+        /* read_args->size is used as total number of paragraphs send to every worker */
+        for (int i = 0; i < MASTER_THREADS; i++) {
+            nr_paragrahs += read_args->size;
+        }
 
         free(read_args);
 
-        /* receive paragraphs from workers */
+        cout << "Total number of paragraphs " << nr_paragrahs << "\n";
+        /* receive size of the paragraph and the paragraph itself from workers */
+        /* 
+        * primesc numarul de paragrafe ce urmeaza a fi primite
+        * primesc toate paragrafele 
+        */
+
+        for (int i = 0; i < MASTER_THREADS; i++) {
+            switch (i) {
+                case (HORROR_THREAD):
+                    MPI_Recv(&result_paragraphs_size, 1, MPI_INT, HORROR, 0, MPI_COMM_WORLD, &mpi_status);
+                    MPI_Recv(&result_horror[0], result_paragraphs_size * sizeof(struct line), MPI_BYTE, HORROR, 0, MPI_COMM_WORLD, &mpi_status);
+                    break;
+                // case (COMEDY_THREAD):
+                //     // MPI_Recv(&result_paragraphs_size, 1, MPI_INT, COMEDY, 0, MPI_COMM_WORLD, &mpi_status);
+                //     MPI_Recv(result_paragraphs, result_paragraphs_size * sizeof(struct line), MPI_BYTE, COMEDY, 0, MPI_COMM_WORLD, &mpi_status); 
+                //     break;
+                // case (FANTASY_THREAD): 
+                //     // MPI_Recv(&result_paragraphs_size, 1, MPI_INT, FANTASY, 0, MPI_COMM_WORLD, &mpi_status);
+                //     MPI_Recv(result_paragraphs, result_paragraphs_size * sizeof(struct line), MPI_BYTE, FANTASY, 0, MPI_COMM_WORLD, &mpi_status);
+                //     break;
+                // case (SCIFI_THREAD): 
+                //     // MPI_Recv(&result_paragraphs_size, 1, MPI_INT, SCIFI, 0, MPI_COMM_WORLD, &mpi_status);
+                //     MPI_Recv(result_paragraphs, result_paragraphs_size * sizeof(struct line), MPI_BYTE, SCIFI, 0, MPI_COMM_WORLD, &mpi_status);
+                //     break;
+            }    
+        }
+
+        for (int i = 0; i < 5; i++) {
+            cout << result_horror[i].data << endl;
+        }
 
     } else if (rank == HORROR) {
 
@@ -558,14 +587,16 @@ int main (int argc, char *argv[]) {
                     exit(1);
                 }
 	        }
-
+            
+            result += HORROR_NAME;
+            result += "\n";
             /* compose the modified paragraph */
             for (int i = 0; i < proc_threads; i++) {
                 string rez = thread_args[i].result;
                 result += rez;
             }
 
-            cout << result << "\n";
+            // cout << result << "\n";
 
             /* keep processed data to send data back to master for writing in file */
             strcpy(result_paragraphs[result_paragraphs_size].data, result.c_str());
@@ -589,15 +620,293 @@ int main (int argc, char *argv[]) {
             words.clear();
         }
         /* these were all paragraphs. Now send to master processed text */
-
-        MPI_Send(result_paragraphs, result_paragraphs_size * sizeof(struct line), MPI_BYTE, MASTER, 0, MPI_COMM_WORLD);
+        MPI_Send(&result_paragraphs_size, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD);
+        MPI_Send(&result_paragraphs[0], result_paragraphs_size * sizeof(paragraph_line), MPI_BYTE, MASTER, 0, MPI_COMM_WORLD);
 
     } else if (rank == COMEDY) {
-    
+        int receive_flag;
+        MPI_Recv(&receive_flag, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
+
+        while (receive_flag) {
+            
+            memset(lines, 0, sizeof(lines));
+
+            /* last thread receives data from master */
+            /**************************/
+
+            read_args = (read_arguments*) malloc(sizeof(read_arguments));
+            read_args[0].id = 0;
+            read_args[0].lines = &lines[0]; 
+            r = pthread_create(&threads[MAX_THREADS - 1], NULL, receiveFromMaster, &read_args[0]);
+
+            pthread_join(threads[MAX_THREADS - 1], &thread_status);
+            /***********************/
+            
+            paragraph_size = read_args->size;
+
+            /* calculate number of threads */
+            nr_threads = checkNumberOfThreads(paragraph_size);
+            int proc_threads = nr_threads - 1;
+            
+            /**OTHER THREADSs*********************/
+
+            /* tokenize string  and send to processing threads */
+            string paragraph;
+            for (int i = 0; i < paragraph_size; i++) {
+                paragraph += lines[i].data;
+            }
+
+            tokenize(paragraph, words);
+            
+            /* create the threads and separate the work for every thread */
+            for (int i = 0; i < proc_threads; i++) {
+
+                thread_args[i].id = i;
+                thread_args[i].nr_threads = proc_threads;
+                thread_args[i].words = &words[0]; 
+                thread_args[i].size = words.size();
+
+                r = pthread_create(&threads[i], NULL, processComedyThreads, &thread_args[i]);
+
+                if (r) {
+                    printf("Can't create thread %d!\n", i);
+                    exit(1);
+                }
+            }
+
+            /* wait threads to finish processing */
+            for (int i = 0; i < proc_threads; i++) {
+                r = pthread_join(threads[i], &thread_status);
+                if (r) {
+                    printf("Can't wait thread %d!\n", i);
+                    exit(1);
+                }
+	        }
+            
+            result += HORROR_NAME;
+            result += "\n";
+            /* compose the modified paragraph */
+            for (int i = 0; i < proc_threads; i++) {
+                string rez = thread_args[i].result;
+                result += rez;
+            }
+
+            // cout << result << "\n";
+
+            /* keep processed data to send data back to master for writing in file */
+            strcpy(result_paragraphs[result_paragraphs_size].data, result.c_str());
+            result_paragraphs[result_paragraphs_size].NO = lines[0].NO;
+            result_paragraphs_size++;
+            // cout << result_paragraphs[result_paragraphs_size - 1].data;
+            // cout << result_paragraphs[result_paragraphs_size - 1].NO << endl;
+            /**OTHER THREADSs*********************/
+
+            
+            /* print lines that i've received */
+            for (int i = 0; i < paragraph_size; i++) {
+                // printf("%s", lines[i].data);
+            }
+            
+            /* receive signal for reading from master */
+            MPI_Recv(&receive_flag, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
+            result.clear();
+            memset(thread_args, 0, MAX_THREADS * sizeof(t_arguments));
+            memset(read_args, 0, sizeof(read_arguments));
+            words.clear();
+        }
+        /* these were all paragraphs. Now send to master processed text */
+        MPI_Send(&result_paragraphs_size, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD);
+        MPI_Send(&result_paragraphs[0], result_paragraphs_size * sizeof(paragraph_line), MPI_BYTE, MASTER, 0, MPI_COMM_WORLD);
+
     } else if (rank == FANTASY) {
+        int receive_flag;
+        MPI_Recv(&receive_flag, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
+
+        while (receive_flag) {
+            
+            memset(lines, 0, sizeof(lines));
+
+            /* last thread receives data from master */
+            /**************************/
+
+            read_args = (read_arguments*) malloc(sizeof(read_arguments));
+            read_args[0].id = 0;
+            read_args[0].lines = &lines[0]; 
+            r = pthread_create(&threads[MAX_THREADS - 1], NULL, receiveFromMaster, &read_args[0]);
+
+            pthread_join(threads[MAX_THREADS - 1], &thread_status);
+            /***********************/
+            
+            paragraph_size = read_args->size;
+
+            /* calculate number of threads */
+            nr_threads = checkNumberOfThreads(paragraph_size);
+            int proc_threads = nr_threads - 1;
+            
+            /**OTHER THREADSs*********************/
+
+            /* tokenize string  and send to processing threads */
+            string paragraph;
+            for (int i = 0; i < paragraph_size; i++) {
+                paragraph += lines[i].data;
+            }
+
+            tokenize(paragraph, words);
+            
+            /* create the threads and separate the work for every thread */
+            for (int i = 0; i < proc_threads; i++) {
+
+                thread_args[i].id = i;
+                thread_args[i].nr_threads = proc_threads;
+                thread_args[i].words = &words[0]; 
+                thread_args[i].size = words.size();
+
+                r = pthread_create(&threads[i], NULL, processFantasyThreads, &thread_args[i]);
+
+                if (r) {
+                    printf("Can't create thread %d!\n", i);
+                    exit(1);
+                }
+            }
+
+            /* wait threads to finish processing */
+            for (int i = 0; i < proc_threads; i++) {
+                r = pthread_join(threads[i], &thread_status);
+                if (r) {
+                    printf("Can't wait thread %d!\n", i);
+                    exit(1);
+                }
+	        }
+            
+            result += HORROR_NAME;
+            result += "\n";
+            /* compose the modified paragraph */
+            for (int i = 0; i < proc_threads; i++) {
+                string rez = thread_args[i].result;
+                result += rez;
+            }
+
+            // cout << result << "\n";
+
+            /* keep processed data to send data back to master for writing in file */
+            strcpy(result_paragraphs[result_paragraphs_size].data, result.c_str());
+            result_paragraphs[result_paragraphs_size].NO = lines[0].NO;
+            result_paragraphs_size++;
+            // cout << result_paragraphs[result_paragraphs_size - 1].data;
+            // cout << result_paragraphs[result_paragraphs_size - 1].NO << endl;
+            /**OTHER THREADSs*********************/
+
+            
+            /* print lines that i've received */
+            for (int i = 0; i < paragraph_size; i++) {
+                // printf("%s", lines[i].data);
+            }
+            
+            /* receive signal for reading from master */
+            MPI_Recv(&receive_flag, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
+            result.clear();
+            memset(thread_args, 0, MAX_THREADS * sizeof(t_arguments));
+            memset(read_args, 0, sizeof(read_arguments));
+            words.clear();
+        }
+        /* these were all paragraphs. Now send to master processed text */
+        MPI_Send(&result_paragraphs_size, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD);
+        MPI_Send(&result_paragraphs[0], result_paragraphs_size * sizeof(paragraph_line), MPI_BYTE, MASTER, 0, MPI_COMM_WORLD);
 
     } else if (rank == SCIFI) {
+        int receive_flag;
+        MPI_Recv(&receive_flag, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
 
+        while (receive_flag) {
+            
+            memset(lines, 0, sizeof(lines));
+
+            /* last thread receives data from master */
+            /**************************/
+
+            read_args = (read_arguments*) malloc(sizeof(read_arguments));
+            read_args[0].id = 0;
+            read_args[0].lines = &lines[0]; 
+            r = pthread_create(&threads[MAX_THREADS - 1], NULL, receiveFromMaster, &read_args[0]);
+
+            pthread_join(threads[MAX_THREADS - 1], &thread_status);
+            /***********************/
+            
+            paragraph_size = read_args->size;
+
+            /* calculate number of threads */
+            nr_threads = checkNumberOfThreads(paragraph_size);
+            int proc_threads = nr_threads - 1;
+            
+            /**OTHER THREADSs*********************/
+
+            /* tokenize string  and send to processing threads */
+            string paragraph;
+            for (int i = 0; i < paragraph_size; i++) {
+                paragraph += lines[i].data;
+            }
+
+            tokenize(paragraph, words);
+            
+            /* create the threads and separate the work for every thread */
+            for (int i = 0; i < proc_threads; i++) {
+
+                thread_args[i].id = i;
+                thread_args[i].nr_threads = proc_threads;
+                thread_args[i].words = &words[0]; 
+                thread_args[i].size = words.size();
+
+                r = pthread_create(&threads[i], NULL, processScifiThreads, &thread_args[i]);
+
+                if (r) {
+                    printf("Can't create thread %d!\n", i);
+                    exit(1);
+                }
+            }
+
+            /* wait threads to finish processing */
+            for (int i = 0; i < proc_threads; i++) {
+                r = pthread_join(threads[i], &thread_status);
+                if (r) {
+                    printf("Can't wait thread %d!\n", i);
+                    exit(1);
+                }
+	        }
+            
+            result += HORROR_NAME;
+            result += "\n";
+            /* compose the modified paragraph */
+            for (int i = 0; i < proc_threads; i++) {
+                string rez = thread_args[i].result;
+                result += rez;
+            }
+
+            // cout << result << "\n";
+
+            /* keep processed data to send data back to master for writing in file */
+            strcpy(result_paragraphs[result_paragraphs_size].data, result.c_str());
+            result_paragraphs[result_paragraphs_size].NO = lines[0].NO;
+            result_paragraphs_size++;
+            // cout << result_paragraphs[result_paragraphs_size - 1].data;
+            // cout << result_paragraphs[result_paragraphs_size - 1].NO << endl;
+            /**OTHER THREADSs*********************/
+
+            
+            /* print lines that i've received */
+            for (int i = 0; i < paragraph_size; i++) {
+                // printf("%s", lines[i].data);
+            }
+            
+            /* receive signal for reading from master */
+            MPI_Recv(&receive_flag, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
+            result.clear();
+            memset(thread_args, 0, MAX_THREADS * sizeof(t_arguments));
+            memset(read_args, 0, sizeof(read_arguments));
+            words.clear();
+        }
+        /* these were all paragraphs. Now send to master processed text */
+        MPI_Send(&result_paragraphs_size, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD);
+        MPI_Send(&result_paragraphs[0], result_paragraphs_size * sizeof(paragraph_line), MPI_BYTE, MASTER, 0, MPI_COMM_WORLD);
     }
 
     MPI_Finalize();
