@@ -36,8 +36,6 @@ const char newline[2] = "\n";
 
 using namespace std;
 
-int P = 4;
-
 pthread_barrier_t barrier;
 
 /* this is a line from a paragraph */
@@ -49,7 +47,8 @@ typedef struct __attribute__((__packed__)) line {
 
 /* thread arguments */
 typedef struct t_arguments {
-    int id; 
+    int id;
+    int nr_threads;
     /* the result of a thread */
     string result;
     /* splitted sentence and size */
@@ -71,13 +70,13 @@ typedef struct read_arguments {
 int checkNumberOfThreads(int numberOfLines) {
 
     /* at least 1 thread for reading */
-    int nrThreads = 1;
-    int P;
+    int nr_threads = 1;
+    int worker_threads;
     
-    nrThreads += numberOfLines / MAX_LINES_THREAD;
-    P = nrThreads <= MAX_THREADS ? nrThreads : MAX_THREADS;
+    nr_threads += numberOfLines / MAX_LINES_THREAD;
+    worker_threads = nr_threads <= MAX_THREADS ? nr_threads : MAX_THREADS;
 
-  return P;
+  return worker_threads;
 }
 
 // http://www.joshbarczak.com/blog/?p=970
@@ -173,10 +172,11 @@ void *processHorrorThreads(void *arg) {
     t_arguments *args = (t_arguments*)(arg);
     string *words = args->words;
     int id = args->id;
+    int nr_threads = args->nr_threads;
     int size = args->size;
 
-    int start = id * (double)size / P;
-    int end = MIN((id + 1) * (double)size / P, size);
+    int start = id * (double)size / nr_threads;
+    int end = MIN((id + 1) * (double)size / nr_threads, size);
 
     for (int i = start; i < end; i++) {
         args->result += duplicateConsonants(words[i]);
@@ -205,10 +205,11 @@ void *processComedyThreads(void *arg) {
     t_arguments *args = (t_arguments*)(arg);
     string *words = args->words;
     int id = args->id;
+    int nr_threads = args->nr_threads;
     int size = args->size;
 
-    int start = id * (double)size / P;
-    int end = MIN((id + 1) * (double)size / P, size);
+    int start = id * (double)size / nr_threads;
+    int end = MIN((id + 1) * (double)size / nr_threads, size);
 
     for (int i = start; i < end; i++) {
         for (int j = 0; j < words[i].length(); j++) {
@@ -241,10 +242,11 @@ void *processScifiThreads(void *arg) {
     t_arguments *args = (t_arguments*)(arg);
     string *words = args->words;
     int id = args->id;
+    int nr_threads = args->nr_threads;
     int size = args->size;
 
-    int start = id * (double)size / P;
-    int end = MIN((id + 1) * (double)size / P, size);
+    int start = id * (double)size / nr_threads;
+    int end = MIN((id + 1) * (double)size / nr_threads, size);
 
     for (int i = start; i < end; i++) {
         if ((i + 1) % 7 == 0) {
@@ -274,10 +276,11 @@ void *processFantasyThreads(void *arg) {
     t_arguments *args = (t_arguments*)(arg);
     string *words = args->words;
     int id = args->id;
+    int nr_threads = args->nr_threads;
     int size = args->size;
 
-    int start = id * (double)size / P;
-    int end = MIN((id + 1) * (double)size / P, size);
+    int start = id * (double)size / nr_threads;
+    int end = MIN((id + 1) * (double)size / nr_threads, size);
 
     for (int i = start; i < end; i++) {
         if (islower((words[i])[0])) {
@@ -470,10 +473,13 @@ int main (int argc, char *argv[]) {
 
             /* calculate number of threads */
             nr_threads = checkNumberOfThreads(paragraph_size);
-
+            
+            string str = lines[0].data;
+            tokenize(str, words);
             /* create the threads and separate the work for every thread */
             for (int i = 0; i < nr_threads; i++) {
                 thread_args[i].id = i;
+                thread_args[i].nr_threads = nr_threads;
                 thread_args[i].words = &words[0]; 
                 thread_args[i].size = words.size();
 
@@ -486,7 +492,7 @@ int main (int argc, char *argv[]) {
             }
 
             /* wait threads to finish processing */
-            for (int i = 0; i < P; i++) {
+            for (int i = 0; i < nr_threads; i++) {
                 r = pthread_join(threads[i], &thread_status);
                 if (r) {
                     printf("Can't wait thread %d!\n", i);
@@ -495,7 +501,7 @@ int main (int argc, char *argv[]) {
 	        }
 
             /* compose the modified paragraph */
-            for (int i = 0; i < P; i++) {
+            for (int i = 0; i < nr_threads; i++) {
                 result += (thread_args[i].result);
             }
 
