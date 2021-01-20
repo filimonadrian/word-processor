@@ -20,7 +20,7 @@
 #define SCIFI_THREAD 3
 
 #define MAX_THREADS sysconf(_SC_NPROCESSORS_CONF)
-#define MAX_LINES_THREAD 20
+
 #define MASTER_THREADS 4
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
@@ -36,12 +36,12 @@ const char newline[2] = "\n";
 
 using namespace std;
 
-int P = 4;
+int P = 2;
 
 pthread_barrier_t barrier;
 
 /* this is a line from a paragraph */
-typedef struct __attribute__((__packed__)) line {
+typedef struct line {
     // string data;
     char data[100];
     int NO;
@@ -314,16 +314,21 @@ void *read_file(void *arg) {
             line_NO++;
             
             // if this is type of paragraph we need to read
-            if (!strncmp(line, args->genre, strlen(genre)) && isNewLineBefore == true) {
+            if (!strncmp(line, genre, 6) && isNewLineBefore == true) {
                 // read the entire paragraph, keep a vector of lines(strings)
 
+                // memset(line, 0, sizeof(line));
                 // while paragraph is not finished
                 while (strcmp(line, newline) && !feof(fp)) {
                     memset(line, 0, sizeof(line));
-                    fgets(line, sizeof(line) - 1, (FILE*)fp);
+                    fgets(line, 500, (FILE*)fp);
                     line_NO++;
 
                     /* send line and line_NO */
+                    int len = strlen(line);
+                    MPI_Send(&len, 1, MPI_INT, HORROR, 0, MPI_COMM_WORLD);
+                    // cout << line;
+                    MPI_Send(line, strlen(line), MPI_CHAR, HORROR, 0, MPI_COMM_WORLD);
 
                     /* the end of the paragraph */
                     if (!strcmp(line, newline)) {
@@ -331,19 +336,18 @@ void *read_file(void *arg) {
                         // for (int i = 0; i < 3; i++) {
                         //     cout << lines[i].data << "\n";
                         // }
+                        // ret = MPI_Send(&size, 1, MPI_INT, HORROR, 0, MPI_COMM_WORLD);
+                        // ret = MPI_Send(lines, 3 * sizeof(struct line), MPI_BYTE, HORROR, 0, MPI_COMM_WORLD);
 
                         /* send paragraph to the worker
                         * reset paragraph 
                         */
-                        ret = MPI_Send(&size, 1, MPI_INT, id + 1, 0, MPI_COMM_WORLD);
-                        ret = MPI_Send(lines, size * sizeof(struct line), MPI_BYTE, id + 1, 0, MPI_COMM_WORLD);
-                        memset(lines, 0, sizeof(lines));
 
                         break;
                     }
 
                     // lines[size].data = line;
-                    strcpy(lines[size].data, line);
+                    // strcpy(lines[size].data, line);
                     lines[size].NO = line_NO;
                     isNewLineBefore = false;
 
@@ -364,11 +368,12 @@ void *read_file(void *arg) {
 
 int main (int argc, char *argv[]) {
 
-    int  numTasks, rank, provided, ret = 0;
+    int  numTasks, rank, ret = 0;
 
     // MPI_Init(&argc, &argv);
-
+    int provided;
     MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
+
     MPI_Comm_size(MPI_COMM_WORLD, &numTasks);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
@@ -397,65 +402,94 @@ int main (int argc, char *argv[]) {
     char line[600];
 
     if (rank == MASTER) {
-        pthread_t threads[MASTER_THREADS];
-        read_args = (read_arguments*) malloc(MASTER_THREADS * sizeof(read_arguments));
+        FILE *fp;
+        char genre[20];
+        strcpy(genre, "horror");
+        bool isNewLineBefore = true;
 
-        for (int i = 0; i < MASTER_THREADS; i++) {
-            switch (i) {
+        int ret = 0;
+        int line_NO = 0;
+        int size = 0;
+
+        /* buffer which keeps the data */
+        char line[501];
+        paragraph_line *lines = (paragraph_line* ) malloc(2600 * sizeof(paragraph_line));
+        // paragraph_line lines[100];
+
+        fp = fopen("input1.in", "r");
+
+        if (fp == NULL) {
+            printf("Error! Can't open this file.\n");
+        } else {
+            while (!feof(fp)) {
+                fgets(line, 500, (FILE*)fp);
+                line_NO++;
                 
-                /* genre - 1 because threads start from 0
-                * but processes starts from 1
-                */
-                case (HORROR_THREAD):
-                    strcpy(read_args[i].genre, HORROR_NAME);
-                    /* get the ref of std::vector as an simple array */ 
-                    read_args[i].lines = &horror_lines[0];
-                    break;
-                case (COMEDY_THREAD):
-                    strcpy(read_args[i].genre, COMEDY_NAME);
-                    read_args[i].lines = &comedy_lines[0]; 
-                    break;
-                case (FANTASY_THREAD): 
-                    strcpy(read_args[i].genre, FANTASY_NAME);
-                    read_args[i].lines = &fantasy_lines[0]; 
-                    break;
-                case (SCIFI_THREAD): 
-                    strcpy(read_args[i].genre, SCIFI_NAME);
-                    read_args[i].lines = &scifi_lines[0]; 
-                    break;
-            }
+                // if this is type of paragraph we need to read
+                if (!strncmp(line, genre, 6) && isNewLineBefore == true) {
 
-            read_args[i].id = i;
-            // arguments[i].lines = &lines[0]; 
+                    // while paragraph is not finished
+                    while (strcmp(line, newline) && !feof(fp)) {
+                        memset(line, 0, sizeof(line));
+                        fgets(line, 500, (FILE*)fp);
+                        line_NO++;
 
-            r = pthread_create(&threads[i], NULL, read_file, &read_args[i]);
+                        /* send line and line_NO */
+                        // int len = strlen(line);
+                        // MPI_Send(&len, 1, MPI_INT, HORROR, 0, MPI_COMM_WORLD);
+                        // // cout << line;
+                        // MPI_Send(line, strlen(line), MPI_CHAR, HORROR, 0, MPI_COMM_WORLD);
 
-            if (r) {
-                printf("Can't create thread %d!\n", i);
-                exit(-1);
+                        /* the end of the paragraph */
+                        if (!strcmp(line, newline)) {
+                            isNewLineBefore = true;
+                            // for (int i = 0; i < 3; i++) {
+                            //     cout << lines[i].data << "\n";
+                            // }
+                            printf("%s\n", lines[0].data);
+                            MPI_Send(&size, 1, MPI_INT, HORROR, 0, MPI_COMM_WORLD);
+                            MPI_Send(lines, size * sizeof(struct line), MPI_BYTE, HORROR, 0, MPI_COMM_WORLD);
+
+                            /* send paragraph to the worker
+                            * reset paragraph 
+                            */
+
+                            break;
+                        }
+
+                        // lines[size].data = line;
+                        strcpy(lines[size].data, line);
+                        lines[size].NO = line_NO;
+                        isNewLineBefore = false;
+
+                        size++;
+
+                        // printf("%s", line);
+                    }
+
+                }
+                // printf("%s", line);
+                memset(line, 0, sizeof(line));
             }
         }
-
-        for (int i = 0; i < P; i++) {
-            r = pthread_join(threads[i], &thread_status);
-            if (r) {
-                printf("Can't wait thread %d!\n", i);
-                exit(-1);
-            }
-	    }
-
-        free(read_args);
+        fclose(fp);
 
     } else if (rank == HORROR) {
         paragraph_line *lines = (paragraph_line* ) malloc(2600 * sizeof(paragraph_line));
-        int paragraph_size = 0, processing_threads = 1;
+        // paragraph_line lines[100];
+        int paragraph_size = 0;
+        int len = 0;
         ret = MPI_Recv(&paragraph_size, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
         ret = MPI_Recv(lines, paragraph_size * sizeof(struct line), MPI_BYTE, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
-        
-        processing_threads += paragraph_size / MAX_LINES_THREAD;
-        
+
+        // ret = MPI_Recv(&len, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
+        // ret = MPI_Recv(line, 500, MPI_CHAR, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
+        // printf ("size: %d line: %s\n", len, line);
+        // memset(line, 0, 300);
+
+        printf ("Par_size: %d\n", paragraph_size);
         for (int i = 0; i < paragraph_size; i++) {
-            printf("%s", lines[i].data);
+            printf("%s\n", lines[i].data);
         }
     } else if (rank == COMEDY) {
     

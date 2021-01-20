@@ -21,6 +21,7 @@ const char COMEDY_NAME[7] = "comedy";
 const char HORROR_NAME[7] = "horror";
 const char FANTASY_NAME[8] = "fantasy";
 const char SCIFI_NAME[16] = "science-fiction";
+const char newline[2] = "\n";
 
 using namespace std; 
 
@@ -130,12 +131,12 @@ void *read_file(void *arg) {
 
                 // memset(line, 0, sizeof(line));
                 // while paragraph is not finished
-                while (strcmp(line, "\n") && !feof(fp)) {
+                while (strcmp(line, newline) && !feof(fp)) {
                     memset(line, 0, sizeof(line));
                     fgets(line, 500, (FILE*)fp);
                     line_NO++;
 
-                    if (!strcmp(line, "\n")) {
+                    if (!strcmp(line, newline)) {
                         isNewLineBefore = true;
                         break;
                     }
@@ -219,10 +220,10 @@ int main() {
 	}
 
     for (int i = 0; i < 5; i++) {
-        // cout << horror_lines[i].NO << "  " << horror_lines[i].data;
+        cout << horror_lines[i].NO << "  " << horror_lines[i].data;
     }
 
-    cout << arguments->size << "\n";
+    // cout << arguments->size << "\n";
 
 	r = pthread_barrier_destroy(&barrier);
 	if (r) {
