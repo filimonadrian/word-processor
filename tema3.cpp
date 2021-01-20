@@ -181,15 +181,12 @@ void *processHorrorThreads(void *arg) {
     int start = id * (double)size / nr_threads;
     int end = MIN((id + 1) * (double)size / nr_threads, size);
 
-    // for (int i = start; i < end; i++) {
-    //     cout << "__" << words[i] << "__\n";
-    // }
-
     for (int i = start; i < end; i++) {
         rez += duplicateConsonants(words[i]);
-        // rez += words[i];
-        rez += " ";
-        // cout << "__" << rez << "__\n";
+        
+        if (start != size - 1) {
+            rez += " ";
+        }
     }
 
     // cout << "Din thread: " << rez << endl;
@@ -250,7 +247,9 @@ void *processComedyThreads(void *arg) {
                 rez.push_back((words[i])[j]);
             }
         }
-        rez.push_back(' ');
+        if (start != size - 1) {
+            rez.push_back(' ');
+        }
         // cout << "\n";
     }
 
@@ -285,7 +284,9 @@ void *processScifiThreads(void *arg) {
             reverse(words[i].begin(), words[i].end());
         }
         rez += words[i];
-        rez += " ";
+        if (start != size - 1) {
+            rez += " ";
+        }
     }
 
     strcpy(args->result, rez.c_str());
@@ -317,12 +318,27 @@ void *processFantasyThreads(void *arg) {
     int end = MIN((id + 1) * (double)size / nr_threads, size);
 
     for (int i = start; i < end; i++) {
-        if (islower((words[i])[0])) {
-            (words[i])[0] = toupper((words[i])[0]);
-        }
+        for (int j = 0; j < words[i].size(); j++){
+            if (j == 0 && islower((words[i])[j])) {
+                (words[i])[0] = toupper((words[i])[j]);
+            } else if (islower((words[i])[j]) && 
+                (words[i])[j - 1] == '\n') {
+                (words[i])[j] = toupper((words[i])[j]);
+            }
+        } 
         rez += words[i];
-        rez += " ";
+        if (start != size - 1) {
+            rez += " ";
+        }
     }
+
+    // for (int i = start; i < end; i++) {
+    //     if (islower((words[i])[0])) {
+    //         (words[i])[0] = toupper((words[i])[0]);
+    //     }
+    //     rez += words[i];
+    //     rez += " ";
+    // }
 
     strcpy(args->result, rez.c_str());
 	pthread_exit(NULL);
@@ -667,7 +683,6 @@ int main (int argc, char *argv[]) {
             words.clear();
         }
 
-        // sort(result_paragraphs.begin(), result_paragraphs.end(), paragraphs_order);
         /* these were all paragraphs. Now send to master processed text */
         MPI_Send(&result_paragraphs_size, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD);
         MPI_Send(&result_paragraphs[0], result_paragraphs_size * sizeof(paragraph_line), MPI_BYTE, MASTER, 0, MPI_COMM_WORLD);
@@ -696,8 +711,6 @@ int main (int argc, char *argv[]) {
             /* calculate number of threads */
             nr_threads = checkNumberOfThreads(paragraph_size);
             int proc_threads = nr_threads - 1;
-            
-            /**OTHER THREADSs*********************/
 
             /* tokenize string  and send to processing threads */
             string paragraph;
@@ -740,21 +753,10 @@ int main (int argc, char *argv[]) {
                 result += rez;
             }
 
-            // cout << result << "\n";
-
             /* keep processed data to send data back to master for writing in file */
             strcpy(result_paragraphs[result_paragraphs_size].data, result.c_str());
             result_paragraphs[result_paragraphs_size].NO = lines[0].NO;
             result_paragraphs_size++;
-            // cout << result_paragraphs[result_paragraphs_size - 1].data;
-            // cout << result_paragraphs[result_paragraphs_size - 1].NO << endl;
-            /**OTHER THREADSs*********************/
-
-            
-            /* print lines that i've received */
-            for (int i = 0; i < paragraph_size; i++) {
-                // printf("%s", lines[i].data);
-            }
             
             /* receive signal for reading from master */
             MPI_Recv(&receive_flag, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
@@ -793,7 +795,6 @@ int main (int argc, char *argv[]) {
             nr_threads = checkNumberOfThreads(paragraph_size);
             int proc_threads = nr_threads - 1;
             
-            /**OTHER THREADSs*********************/
 
             /* tokenize string  and send to processing threads */
             string paragraph;
@@ -836,22 +837,12 @@ int main (int argc, char *argv[]) {
                 result += rez;
             }
 
-            // cout << result << "\n";
-
             /* keep processed data to send data back to master for writing in file */
             strcpy(result_paragraphs[result_paragraphs_size].data, result.c_str());
             result_paragraphs[result_paragraphs_size].NO = lines[0].NO;
             result_paragraphs_size++;
-            // cout << result_paragraphs[result_paragraphs_size - 1].data;
-            // cout << result_paragraphs[result_paragraphs_size - 1].NO << endl;
-            /**OTHER THREADSs*********************/
+            
 
-            
-            /* print lines that i've received */
-            for (int i = 0; i < paragraph_size; i++) {
-                // printf("%s", lines[i].data);
-            }
-            
             /* receive signal for reading from master */
             MPI_Recv(&receive_flag, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
             result.clear();
@@ -859,7 +850,7 @@ int main (int argc, char *argv[]) {
             memset(read_args, 0, sizeof(read_arguments));
             words.clear();
         }
-        // sort(result_paragraphs.begin(), result_paragraphs.end(), paragraphs_order);
+
         /* these were all paragraphs. Now send to master processed text */
         MPI_Send(&result_paragraphs_size, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD);
         MPI_Send(&result_paragraphs[0], result_paragraphs_size * sizeof(paragraph_line), MPI_BYTE, MASTER, 0, MPI_COMM_WORLD);
@@ -888,74 +879,74 @@ int main (int argc, char *argv[]) {
             /* calculate number of threads */
             nr_threads = checkNumberOfThreads(paragraph_size);
             int proc_threads = nr_threads - 1;
-            
-            /**OTHER THREADSs*********************/
 
             /* tokenize string  and send to processing threads */
-            string paragraph;
-            for (int i = 0; i < paragraph_size; i++) {
-                paragraph += lines[i].data;
-            }
+            // string paragraph;
+            // for (int i = 0; i < paragraph_size; i++) {
+            //     paragraph += lines[i].data;
+            // }
 
-            tokenize2(paragraph, words);
-            
-            /* create the threads and separate the work for every thread */
-            for (int i = 0; i < proc_threads; i++) {
-
-                thread_args[i].id = i;
-                thread_args[i].nr_threads = proc_threads;
-                thread_args[i].words = &words[0]; 
-                thread_args[i].size = words.size();
-
-                r = pthread_create(&threads[i], NULL, processScifiThreads, &thread_args[i]);
-
-                if (r) {
-                    printf("Can't create thread %d!\n", i);
-                    exit(1);
-                }
-            }
-
-            /* wait threads to finish processing */
-            for (int i = 0; i < proc_threads; i++) {
-                r = pthread_join(threads[i], &thread_status);
-                if (r) {
-                    printf("Can't wait thread %d!\n", i);
-                    exit(1);
-                }
-	        }
-            
+            // tokenize2(paragraph, words);
             result += SCIFI_NAME;
             result += "\n";
-            /* compose the modified paragraph */
-            for (int i = 0; i < proc_threads; i++) {
-                string rez = thread_args[i].result;
-                result += rez;
-            }
+            
+            /* process the paragraph line by line --> 7th word per line */
+            for (int j = 0; j < paragraph_size; j++) {
+                string paragraph = lines[j].data;
+                tokenize2(paragraph, words);
 
-            // cout << result << "\n";
+                /* create the threads and separate the work for every thread */
+                for (int i = 0; i < proc_threads; i++) {
+
+                    thread_args[i].id = i;
+                    thread_args[i].nr_threads = proc_threads;
+                    thread_args[i].words = &words[0]; 
+                    thread_args[i].size = words.size();
+
+                    r = pthread_create(&threads[i], NULL, processScifiThreads, &thread_args[i]);
+
+                    if (r) {
+                        printf("Can't create thread %d!\n", i);
+                        exit(1);
+                    }
+                }
+
+                /* wait threads to finish processing */
+                for (int i = 0; i < proc_threads; i++) {
+                    r = pthread_join(threads[i], &thread_status);
+                    if (r) {
+                        printf("Can't wait thread %d!\n", i);
+                        exit(1);
+                    }
+                }
+
+                /* compose the modified paragraph */
+                for (int i = 0; i < proc_threads; i++) {
+                    string rez = thread_args[i].result;
+                    result += rez;
+                }
+
+                /* clear structures */
+                memset(thread_args, 0, MAX_THREADS * sizeof(t_arguments));
+                memset(read_args, 0, sizeof(read_arguments));
+                words.clear();
+            }
+            
 
             /* keep processed data to send data back to master for writing in file */
             strcpy(result_paragraphs[result_paragraphs_size].data, result.c_str());
             result_paragraphs[result_paragraphs_size].NO = lines[0].NO;
             result_paragraphs_size++;
-            // cout << result_paragraphs[result_paragraphs_size - 1].data;
-            // cout << result_paragraphs[result_paragraphs_size - 1].NO << endl;
-            /**OTHER THREADSs*********************/
-
-            
-            /* print lines that i've received */
-            for (int i = 0; i < paragraph_size; i++) {
-                // printf("%s", lines[i].data);
-            }
-            
+      
             /* receive signal for reading from master */
             MPI_Recv(&receive_flag, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
+
             result.clear();
             memset(thread_args, 0, MAX_THREADS * sizeof(t_arguments));
             memset(read_args, 0, sizeof(read_arguments));
             words.clear();
         }
-        // sort(result_paragraphs.begin(), result_paragraphs.end(), paragraphs_order);
+
         /* these were all paragraphs. Now send to master processed text */
         MPI_Send(&result_paragraphs_size, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD);
         MPI_Send(&result_paragraphs[0], result_paragraphs_size * sizeof(paragraph_line), MPI_BYTE, MASTER, 0, MPI_COMM_WORLD);
