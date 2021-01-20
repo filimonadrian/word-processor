@@ -19,7 +19,7 @@
 
 using namespace std; 
 
-int P = 4;
+int P = 2;
 pthread_barrier_t barrier;
 
 typedef struct t_arguments {
@@ -220,7 +220,8 @@ void *processFantasyThreads(void *arg) {
     int end = MIN((id + 1) * (double)size / P, size);
 
     for (int i = start; i < end; i++) {
-        if (islower((words[i])[0])) {
+        //cout << "\n" << words[i] << "\n";
+        if (islower((words[i])[0]) == false) {
             (words[i])[0] = toupper((words[i])[0]);
         }
         args->result += words[i];
@@ -233,8 +234,8 @@ void *processFantasyThreads(void *arg) {
 
 int main() {
 
-    string paragraph = "Aceasta tema pare\nImposibil de grea si\nSperam ca nu e imposibil sa o facem\n";
-    // string str = "Aceasta tema pare Imposibil de grea si Speram ca nu e imposibil sa o facem";
+    // string paragraph = "Aceasta tema pare\nImposibil de grea si\nSperam ca nu e imposibil sa o facem\n";
+    string paragraph = "cel\nmai\nprobabil\nse\nface in 2-3 ore maxim";
     vector<string> words;
     pthread_t threads[P];
     t_arguments *thread_args;
@@ -244,6 +245,10 @@ int main() {
 
     tokenize(paragraph, words);
 
+    for (int i = 0; i < words.size(); i++) {
+        //cout << words[i] << "\n\n";
+    }
+    // cout << words.size() << endl;
     thread_args = (t_arguments*) malloc(P * sizeof(t_arguments));
 
     pthread_barrier_init(&barrier, NULL, P);
@@ -256,9 +261,9 @@ int main() {
         thread_args[i].words = &words[0]; 
         thread_args[i].size = words.size();
 
-		r = pthread_create(&threads[i], NULL, processHorrorThreads, &thread_args[i]);
+		// r = pthread_create(&threads[i], NULL, processHorrorThreads, &thread_args[i]);
 		// r = pthread_create(&threads[i], NULL, processComedyThreads, &thread_args[i]);
-		// r = pthread_create(&threads[i], NULL, processFantasyThreads, &thread_args[i]);
+		r = pthread_create(&threads[i], NULL, processFantasyThreads, &thread_args[i]);
 		// r = pthread_create(&threads[i], NULL, processScifiThreads, &thread_args[i]);
 
 		if (r) {
@@ -288,6 +293,14 @@ int main() {
 	}
 
     free(thread_args);
+
+
+    vector<string> test;
+    test.reserve(9000);
+    test.push_back("aa");
+    test.push_back("aa");
+
+    cout << "size: " << test.capacity();
 
     return 0;
 

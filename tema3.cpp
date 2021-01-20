@@ -176,7 +176,6 @@ void *processHorrorThreads(void *arg) {
 
     for (int i = start; i < end; i++) {
         rez += duplicateConsonants(words[i]);
-        // cout << words[i];
         rez += " ";
     }
     strcpy(args->result, rez.c_str());
@@ -184,61 +183,63 @@ void *processHorrorThreads(void *arg) {
 	pthread_exit(NULL);
 }
 
-// void processComedyString(vector<string> words, string &result) {
-//     for (int i = 0; i < words.size(); i++) {
-//         for (int j = 0; j < words[i].length(); j++) {
-//             // cout << (words[i])[j] << " ";
-//             result.push_back((words[i])[j]);
-//             if ((j + 1) % 2 == 0) {
-//                 result.push_back((words[i])[j]);
-//             }
-//         }
-//         result.push_back(' ');
-//         // cout << "\n";
-//     }
-// }
+void processComedyString(vector<string> words, string &result) {
+    for (int i = 0; i < words.size(); i++) {
+        for (int j = 0; j < words[i].length(); j++) {
+            // cout << (words[i])[j] << " ";
+            result.push_back((words[i])[j]);
+            if ((j + 1) % 2 == 0) {
+                result.push_back((words[i])[j]);
+            }
+        }
+        result.push_back(' ');
+        // cout << "\n";
+    }
+}
 
 
 
-// void processComedy(vector<string> words, string &result) {
-//     for (int i = 0; i < words.size(); i++) {
-//         for (int j = 0; j < words[i].length(); j++) {
-//             result.push_back((words[i])[j]);
-//             if ((j + 1) % 2 == 0) {
-//                 result.push_back((words[i])[j]);
-//             }
-//         }
-//         result.push_back(' ');
-//         // cout << "\n";
-//     }
-// }
+void processComedy(vector<string> words, string &result) {
+    for (int i = 0; i < words.size(); i++) {
+        for (int j = 0; j < words[i].length(); j++) {
+            result.push_back((words[i])[j]);
+            if ((j + 1) % 2 == 0) {
+                result.push_back((words[i])[j]);
+            }
+        }
+        result.push_back(' ');
+        // cout << "\n";
+    }
+}
 
-// void *processComedyThreads(void *arg) {
+void *processComedyThreads(void *arg) {
     
-//     t_arguments *args = (t_arguments*)(arg);
-//     string *words = args->words;
-//     int id = args->id;
-//     int nr_threads = args->nr_threads;
-//     int size = args->size;
+    t_arguments *args = (t_arguments*)(arg);
+    string *words = args->words;
+    int id = args->id;
+    int nr_threads = args->nr_threads;
+    int size = args->size;
+    string rez;
 
-//     int start = id * (double)size / nr_threads;
-//     int end = MIN((id + 1) * (double)size / nr_threads, size);
+    int start = id * (double)size / nr_threads;
+    int end = MIN((id + 1) * (double)size / nr_threads, size);
 
-//     for (int i = start; i < end; i++) {
-//         for (int j = 0; j < words[i].length(); j++) {
-//             // cout << (words[i])[j] << " ";
-//             if ((j + 1) % 2 == 0) {
-//                 args->result.push_back(toupper((words[i])[j]));
-//             } else {
-//                 args->result.push_back((words[i])[j]);
-//             }
-//         }
-//         args->result.push_back(' ');
-//         // cout << "\n";
-//     }
+    for (int i = start; i < end; i++) {
+        for (int j = 0; j < words[i].length(); j++) {
+            // cout << (words[i])[j] << " ";
+            if ((j + 1) % 2 == 0) {
+                rez.push_back(toupper((words[i])[j]));
+            } else {
+                rez.push_back((words[i])[j]);
+            }
+        }
+        rez.push_back(' ');
+        // cout << "\n";
+    }
 
-// 	pthread_exit(NULL);
-// }
+    strcpy(args->result, rez.c_str());
+	pthread_exit(NULL);
+}
 
 // void processScifi(vector<string> words, string &result) {
 //     for (int i = 0; i < words.size(); i++) {
@@ -250,27 +251,29 @@ void *processHorrorThreads(void *arg) {
 //     }
 // }
 
-// void *processScifiThreads(void *arg) {
+void *processScifiThreads(void *arg) {
 
-//     t_arguments *args = (t_arguments*)(arg);
-//     string *words = args->words;
-//     int id = args->id;
-//     int nr_threads = args->nr_threads;
-//     int size = args->size;
+    t_arguments *args = (t_arguments*)(arg);
+    string *words = args->words;
+    int id = args->id;
+    int nr_threads = args->nr_threads;
+    int size = args->size;
+    string rez;
 
-//     int start = id * (double)size / nr_threads;
-//     int end = MIN((id + 1) * (double)size / nr_threads, size);
+    int start = id * (double)size / nr_threads;
+    int end = MIN((id + 1) * (double)size / nr_threads, size);
 
-//     for (int i = start; i < end; i++) {
-//         if ((i + 1) % 7 == 0) {
-//             reverse(words[i].begin(), words[i].end());
-//         }
-//         args->result += words[i];
-//         args->result += " ";
-//     }
+    for (int i = start; i < end; i++) {
+        if ((i + 1) % 7 == 0) {
+            reverse(words[i].begin(), words[i].end());
+        }
+        rez += words[i];
+        rez += " ";
+    }
 
-// 	pthread_exit(NULL);
-// }
+    strcpy(args->result, rez.c_str());
+	pthread_exit(NULL);
+}
 
 
 // void processFantasy(vector<string> words, string &result) {
@@ -284,27 +287,29 @@ void *processHorrorThreads(void *arg) {
 // }
 
 
-// void *processFantasyThreads(void *arg) {
+void *processFantasyThreads(void *arg) {
 
-//     t_arguments *args = (t_arguments*)(arg);
-//     string *words = args->words;
-//     int id = args->id;
-//     int nr_threads = args->nr_threads;
-//     int size = args->size;
+    t_arguments *args = (t_arguments*)(arg);
+    string *words = args->words;
+    int id = args->id;
+    int nr_threads = args->nr_threads;
+    int size = args->size;
+    string rez;
 
-//     int start = id * (double)size / nr_threads;
-//     int end = MIN((id + 1) * (double)size / nr_threads, size);
+    int start = id * (double)size / nr_threads;
+    int end = MIN((id + 1) * (double)size / nr_threads, size);
 
-//     for (int i = start; i < end; i++) {
-//         if (islower((words[i])[0])) {
-//             (words[i])[0] = toupper((words[i])[0]);
-//         }
-//         args->result += words[i];
-//         args->result += " ";
-//     }
+    for (int i = start; i < end; i++) {
+        if (islower((words[i])[0])) {
+            (words[i])[0] = toupper((words[i])[0]);
+        }
+        rez += words[i];
+        rez += " ";
+    }
 
-// 	pthread_exit(NULL);
-// }
+    strcpy(args->result, rez.c_str());
+	pthread_exit(NULL);
+}
 
 /* read file  */
 void *read_file(void *arg) {
@@ -409,6 +414,12 @@ void *receiveFromMaster(void *arg) {
     pthread_exit(NULL);
 }
 
+
+bool paragraphs_order(const paragraph_line& a, const paragraph_line& b){
+    /* smallest comes first */
+    return a.NO < b.NO;
+}
+
 int main (int argc, char *argv[]) {
 
     int  numTasks, rank, provided, ret = 0;
@@ -426,10 +437,19 @@ int main (int argc, char *argv[]) {
         return 0;
     }
 
-    vector<paragraph_line> result_horror(3000);
-    vector<paragraph_line> result_comedy(3000);
-    vector<paragraph_line> result_fantasy(3000);
-    vector<paragraph_line> result_scifi(3000);
+    vector<paragraph_line> result_horror;
+    result_horror.reserve(3000);
+    vector<paragraph_line> result_comedy;
+    result_comedy.reserve(3000);
+    vector<paragraph_line> result_fantasy;
+    result_fantasy.reserve(3000);
+    vector<paragraph_line> result_scifi;
+    result_scifi.reserve(3000);
+
+    int result_horror_size = 0;
+    int result_comedy_size = 0;
+    int result_fantasy_size = 0;
+    int result_scifi_size = 0;
 
     vector<string> words;
     t_arguments *thread_args = (t_arguments*) malloc(MAX_THREADS * sizeof(t_arguments));
@@ -443,14 +463,15 @@ int main (int argc, char *argv[]) {
 
     paragraph_line *lines = (paragraph_line* ) malloc(2600 * sizeof(paragraph_line));
     // paragraph_line *result_paragraphs = (paragraph_line *) malloc (2900 * sizeof(paragraph_line));
-    vector<paragraph_line> result_paragraphs(3000);
+    vector<paragraph_line> result_paragraphs;
+    result_paragraphs.reserve(3000);
     int result_paragraphs_size = 0;
 
     int paragraph_size = 0, nr_threads = 0;
 
 
     if (rank == MASTER) {
-        int nr_paragrahs = 0;
+        int nr_paragraphs = 0;
         pthread_t threads[MASTER_THREADS];
         read_args = (read_arguments*) malloc(MASTER_THREADS * sizeof(read_arguments));
 
@@ -490,12 +511,12 @@ int main (int argc, char *argv[]) {
        
         /* read_args->size is used as total number of paragraphs send to every worker */
         for (int i = 0; i < MASTER_THREADS; i++) {
-            nr_paragrahs += read_args->size;
+            nr_paragraphs += read_args->size;
         }
 
         free(read_args);
 
-        cout << "Total number of paragraphs " << nr_paragrahs << "\n";
+        cout << "Total number of paragraphs " << nr_paragraphs << "\n";
         /* receive size of the paragraph and the paragraph itself from workers */
         /* 
         * primesc numarul de paragrafe ce urmeaza a fi primite
@@ -505,26 +526,47 @@ int main (int argc, char *argv[]) {
         for (int i = 0; i < MASTER_THREADS; i++) {
             switch (i) {
                 case (HORROR_THREAD):
-                    MPI_Recv(&result_paragraphs_size, 1, MPI_INT, HORROR, 0, MPI_COMM_WORLD, &mpi_status);
-                    MPI_Recv(&result_horror[0], result_paragraphs_size * sizeof(struct line), MPI_BYTE, HORROR, 0, MPI_COMM_WORLD, &mpi_status);
+                    MPI_Recv(&result_horror_size, 1, MPI_INT, HORROR, 0, MPI_COMM_WORLD, &mpi_status);
+                    MPI_Recv(&result_horror[0], result_horror_size * sizeof(struct line), MPI_BYTE, HORROR, 0, MPI_COMM_WORLD, &mpi_status);
                     break;
-                // case (COMEDY_THREAD):
-                //     // MPI_Recv(&result_paragraphs_size, 1, MPI_INT, COMEDY, 0, MPI_COMM_WORLD, &mpi_status);
-                //     MPI_Recv(result_paragraphs, result_paragraphs_size * sizeof(struct line), MPI_BYTE, COMEDY, 0, MPI_COMM_WORLD, &mpi_status); 
-                //     break;
-                // case (FANTASY_THREAD): 
-                //     // MPI_Recv(&result_paragraphs_size, 1, MPI_INT, FANTASY, 0, MPI_COMM_WORLD, &mpi_status);
-                //     MPI_Recv(result_paragraphs, result_paragraphs_size * sizeof(struct line), MPI_BYTE, FANTASY, 0, MPI_COMM_WORLD, &mpi_status);
-                //     break;
-                // case (SCIFI_THREAD): 
-                //     // MPI_Recv(&result_paragraphs_size, 1, MPI_INT, SCIFI, 0, MPI_COMM_WORLD, &mpi_status);
-                //     MPI_Recv(result_paragraphs, result_paragraphs_size * sizeof(struct line), MPI_BYTE, SCIFI, 0, MPI_COMM_WORLD, &mpi_status);
-                //     break;
+                case (COMEDY_THREAD):
+                    MPI_Recv(&result_comedy_size, 1, MPI_INT, COMEDY, 0, MPI_COMM_WORLD, &mpi_status);
+                    MPI_Recv(&result_comedy[0], result_comedy_size * sizeof(struct line), MPI_BYTE, COMEDY, 0, MPI_COMM_WORLD, &mpi_status); 
+                    break;
+                case (FANTASY_THREAD): 
+                    MPI_Recv(&result_fantasy_size, 1, MPI_INT, FANTASY, 0, MPI_COMM_WORLD, &mpi_status);
+                    MPI_Recv(&result_fantasy[0], result_fantasy_size * sizeof(struct line), MPI_BYTE, FANTASY, 0, MPI_COMM_WORLD, &mpi_status);
+                    break;
+                case (SCIFI_THREAD): 
+                    MPI_Recv(&result_scifi_size, 1, MPI_INT, SCIFI, 0, MPI_COMM_WORLD, &mpi_status);
+                    MPI_Recv(&result_scifi[0], result_scifi_size * sizeof(struct line), MPI_BYTE, SCIFI, 0, MPI_COMM_WORLD, &mpi_status);
+                    break;
             }    
         }
 
-        for (int i = 0; i < 5; i++) {
-            cout << result_horror[i].data << endl;
+        vector<paragraph_line> final_result;
+        for (int i = 0; i < result_horror_size; i++) {
+            final_result.push_back(result_horror[i]);
+        }
+        for (int i = 0; i < result_comedy_size; i++) {
+            final_result.push_back(result_comedy[i]);
+        }
+        for (int i = 0; i < result_fantasy_size; i++) {
+            final_result.push_back(result_fantasy[i]);
+        }
+        for (int i = 0; i < result_scifi_size; i++) {
+            final_result.push_back(result_scifi[i]);
+        }
+
+        // final_result.insert(final_result.end(), result_horror.begin(), result_horror.end());
+        // final_result.insert(final_result.end(), result_comedy.begin(), result_comedy.end());
+        // final_result.insert(final_result.end(), result_fantasy.begin(), result_fantasy.end());
+        // final_result.insert(final_result.end(), result_scifi.begin(), result_scifi.end());
+        
+        sort(final_result.begin(), final_result.end(), paragraphs_order);
+
+        for (int i = 0; i < nr_paragraphs - 1; i++) {
+            cout << final_result[i].data << endl;
         }
 
     } else if (rank == HORROR) {
@@ -619,6 +661,8 @@ int main (int argc, char *argv[]) {
             memset(read_args, 0, sizeof(read_arguments));
             words.clear();
         }
+
+        // sort(result_paragraphs.begin(), result_paragraphs.end(), paragraphs_order);
         /* these were all paragraphs. Now send to master processed text */
         MPI_Send(&result_paragraphs_size, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD);
         MPI_Send(&result_paragraphs[0], result_paragraphs_size * sizeof(paragraph_line), MPI_BYTE, MASTER, 0, MPI_COMM_WORLD);
@@ -683,7 +727,7 @@ int main (int argc, char *argv[]) {
                 }
 	        }
             
-            result += HORROR_NAME;
+            result += COMEDY_NAME;
             result += "\n";
             /* compose the modified paragraph */
             for (int i = 0; i < proc_threads; i++) {
@@ -714,6 +758,7 @@ int main (int argc, char *argv[]) {
             memset(read_args, 0, sizeof(read_arguments));
             words.clear();
         }
+        // sort(result_paragraphs.begin(), result_paragraphs.end(), paragraphs_order);
         /* these were all paragraphs. Now send to master processed text */
         MPI_Send(&result_paragraphs_size, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD);
         MPI_Send(&result_paragraphs[0], result_paragraphs_size * sizeof(paragraph_line), MPI_BYTE, MASTER, 0, MPI_COMM_WORLD);
@@ -778,7 +823,7 @@ int main (int argc, char *argv[]) {
                 }
 	        }
             
-            result += HORROR_NAME;
+            result += FANTASY_NAME;
             result += "\n";
             /* compose the modified paragraph */
             for (int i = 0; i < proc_threads; i++) {
@@ -809,6 +854,7 @@ int main (int argc, char *argv[]) {
             memset(read_args, 0, sizeof(read_arguments));
             words.clear();
         }
+        // sort(result_paragraphs.begin(), result_paragraphs.end(), paragraphs_order);
         /* these were all paragraphs. Now send to master processed text */
         MPI_Send(&result_paragraphs_size, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD);
         MPI_Send(&result_paragraphs[0], result_paragraphs_size * sizeof(paragraph_line), MPI_BYTE, MASTER, 0, MPI_COMM_WORLD);
@@ -873,7 +919,7 @@ int main (int argc, char *argv[]) {
                 }
 	        }
             
-            result += HORROR_NAME;
+            result += SCIFI_NAME;
             result += "\n";
             /* compose the modified paragraph */
             for (int i = 0; i < proc_threads; i++) {
@@ -904,6 +950,7 @@ int main (int argc, char *argv[]) {
             memset(read_args, 0, sizeof(read_arguments));
             words.clear();
         }
+        // sort(result_paragraphs.begin(), result_paragraphs.end(), paragraphs_order);
         /* these were all paragraphs. Now send to master processed text */
         MPI_Send(&result_paragraphs_size, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD);
         MPI_Send(&result_paragraphs[0], result_paragraphs_size * sizeof(paragraph_line), MPI_BYTE, MASTER, 0, MPI_COMM_WORLD);
