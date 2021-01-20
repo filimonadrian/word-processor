@@ -298,7 +298,6 @@ void *processFantasyThreads(void *arg) {
 
 	pthread_exit(NULL);
 }
-
 /* read file  */
 void *read_file(void *arg) {
     FILE *fp;
@@ -378,6 +377,20 @@ void *read_file(void *arg) {
     pthread_exit(NULL);
 }
 
+void *receiveFromMaster(void *arg) {
+    read_arguments *args = (read_arguments*)(arg);
+    int paragraph_size = 0;
+    MPI_Status mpi_status;
+    
+    /* receive size of the paragraph and the paragraph itself */
+    MPI_Recv(&paragraph_size, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
+    MPI_Recv(args->lines, paragraph_size * sizeof(struct line), MPI_BYTE, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
+
+    args->size = paragraph_size;
+    
+    pthread_exit(NULL);
+}
+
 int main (int argc, char *argv[]) {
 
     int  numTasks, rank, provided, ret = 0;
@@ -400,9 +413,6 @@ int main (int argc, char *argv[]) {
     vector<line> fantasy_lines(2600);
     vector<line> scifi_lines(2600);
 
-    vector<paragraph_line> lines(2600);
-
-
     vector<string> words;
     t_arguments *thread_args;
     read_arguments *read_args;
@@ -412,6 +422,10 @@ int main (int argc, char *argv[]) {
     void *thread_status;
     MPI_Status mpi_status;
     char line[600];
+
+    paragraph_line *lines = (paragraph_line* ) malloc(2600 * sizeof(paragraph_line));
+
+    int paragraph_size = 0, nr_threads = 0;
 
     if (rank == MASTER) {
         pthread_t threads[MASTER_THREADS];
@@ -471,59 +485,39 @@ int main (int argc, char *argv[]) {
 
         while (receive_flag) {
         
-            paragraph_line *lines = (paragraph_line* ) malloc(2600 * sizeof(paragraph_line));
-            int paragraph_size = 0, nr_threads = 0;
+            memset(lines, 0, sizeof(lines));
             
-            
-            /* rerceive size of the paragraph and the paragraph itself */
-            ret = MPI_Recv(&paragraph_size, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
-            ret = MPI_Recv(lines, paragraph_size * sizeof(struct line), MPI_BYTE, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
 
+            /* first thread receives data from master */
+            /**************************/
+            /*
+            exit and RELEASE BARRIER 
+            */
+            read_args = (read_arguments*) malloc(sizeof(read_arguments));
+            read_args[0].id = 0;
+            read_args[0].lines = &lines[0]; 
+            r = pthread_create(&threads[0], NULL, receiveFromMaster, &read_args[0]);
+
+            pthread_join(threads[0], &thread_status);
+            /***********************/
+            
+            paragraph_size = read_args->size;
 
             /* calculate number of threads */
             nr_threads = checkNumberOfThreads(paragraph_size);
             
-            /* first thread receives data from master */
+            
+            /**OTHER THREADSs*********************/
 
-            string str = lines[0].data;
-            tokenize(str, words);
-            /* create the threads and separate the work for every thread */
-            for (int i = 0; i < nr_threads; i++) {
-                thread_args[i].id = i;
-                thread_args[i].nr_threads = nr_threads;
-                thread_args[i].words = &words[0]; 
-                thread_args[i].size = words.size();
 
-                r = pthread_create(&threads[i], NULL, processHorrorThreads, &thread_args[i]);
 
-                if (r) {
-                    printf("Can't create thread %d!\n", i);
-                    exit(1);
-                }
-            }
-
-            /* wait threads to finish processing */
-            for (int i = 0; i < nr_threads; i++) {
-                r = pthread_join(threads[i], &thread_status);
-                if (r) {
-                    printf("Can't wait thread %d!\n", i);
-                    exit(1);
-                }
-	        }
-
-            /* compose the modified paragraph */
-            for (int i = 0; i < nr_threads; i++) {
-                result += (thread_args[i].result);
-            }
-
-            cout << result << "\n";
-
+            /**OTHER THREADSs*********************/
 
             
-            // /* print lines that i've received */
-            // for (int i = 0; i < paragraph_size; i++) {
-            //     printf("%s", lines[i].data);
-            // }
+            /* print lines that i've received */
+            for (int i = 0; i < paragraph_size; i++) {
+                printf("%s", lines[i].data);
+            }
             
             /* receive signal for reading from master */
             MPI_Recv(&receive_flag, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
