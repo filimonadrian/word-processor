@@ -70,8 +70,12 @@ typedef struct read_arguments {
 /* calculate number of threads for workers */ 
 int checkNumberOfThreads(int numberOfLines) {
 
-  int nrThreads = numberOfLines / 20;
-  P = nrThreads <= MAX_THREADS ? nrThreads : MAX_THREADS;
+    /* at least 1 thread for reading */
+    int nrThreads = 1;
+    int P;
+    
+    nrThreads += numberOfLines / MAX_LINES_THREAD;
+    P = nrThreads <= MAX_THREADS ? nrThreads : MAX_THREADS;
 
   return P;
 }
@@ -292,17 +296,17 @@ void *read_file(void *arg) {
 
     read_arguments *args = (read_arguments*)(arg);
     int id = args->id;
-    // line *lines = args->lines;
     paragraph_line *lines = (paragraph_line* ) malloc(2600 * sizeof(paragraph_line));
     char genre[20];
     strcpy(genre, args->genre);
     bool isNewLineBefore = true;
 
     int ret = 0;
-    int size = 0;
+    int paragraph_size = 0;
     int line_NO = 0;
+    int send_to_worker;
 
-    /* buffer which keeps the data */
+    /* buffer reader */
     char line[501];
     fp = fopen("input1.in", "r");
 
@@ -310,44 +314,41 @@ void *read_file(void *arg) {
         printf("Error! Can't open this file.\n");
     } else {
         while (!feof(fp)) {
-            fgets(line, 500, (FILE*)fp);
+            fgets(line, sizeof(line) - 1, (FILE*)fp);
             line_NO++;
             
-            // if this is type of paragraph we need to read
+            /* if this is type of paragraph we need to read */
             if (!strncmp(line, args->genre, strlen(genre)) && isNewLineBefore == true) {
-                // read the entire paragraph, keep a vector of lines(strings)
+                // read the entire paragraph, keep a vector of lines
 
                 // while paragraph is not finished
                 while (strcmp(line, newline) && !feof(fp)) {
+
+                    /* notify the worker that it must receive more data */
+                    send_to_worker = 1;
+                    MPI_Send(&send_to_worker, 1, MPI_INT, id + 1, 0, MPI_COMM_WORLD);
+
+                    /* read lines from the paragraph */
                     memset(line, 0, sizeof(line));
                     fgets(line, sizeof(line) - 1, (FILE*)fp);
                     line_NO++;
 
-                    /* send line and line_NO */
-
                     /* the end of the paragraph */
                     if (!strcmp(line, newline)) {
                         isNewLineBefore = true;
-                        // for (int i = 0; i < 3; i++) {
-                        //     cout << lines[i].data << "\n";
-                        // }
 
-                        /* send paragraph to the worker
-                        * reset paragraph 
-                        */
-                        ret = MPI_Send(&size, 1, MPI_INT, id + 1, 0, MPI_COMM_WORLD);
-                        ret = MPI_Send(lines, size * sizeof(struct line), MPI_BYTE, id + 1, 0, MPI_COMM_WORLD);
+                        /* send paragraph to workers and reset paragraph */
+                        ret = MPI_Send(&paragraph_size, 1, MPI_INT, id + 1, 0, MPI_COMM_WORLD);
+                        ret = MPI_Send(lines, paragraph_size * sizeof(struct line), MPI_BYTE, id + 1, 0, MPI_COMM_WORLD);
                         memset(lines, 0, sizeof(lines));
 
                         break;
                     }
 
-                    // lines[size].data = line;
-                    strcpy(lines[size].data, line);
-                    lines[size].NO = line_NO;
+                    strcpy(lines[paragraph_size].data, line);
+                    lines[paragraph_size].NO = line_NO;
                     isNewLineBefore = false;
-
-                    size++;
+                    paragraph_size++;
 
                     // printf("%s", line);
                 }
@@ -357,7 +358,12 @@ void *read_file(void *arg) {
             memset(line, 0, sizeof(line));
         }
     }
-    args->size = size;
+
+    /* notify the worker that there's no more data for it */
+    send_to_worker = 0;
+    MPI_Send(&send_to_worker, 1, MPI_INT, id + 1, 0, MPI_COMM_WORLD);
+    
+    args->size = paragraph_size;
     fclose(fp);
     pthread_exit(NULL);
 }
@@ -390,6 +396,7 @@ int main (int argc, char *argv[]) {
     vector<string> words;
     t_arguments *thread_args;
     read_arguments *read_args;
+    pthread_t threads[MAX_THREADS];
     string result;
     int r = 0;
     void *thread_status;
@@ -401,6 +408,8 @@ int main (int argc, char *argv[]) {
         read_args = (read_arguments*) malloc(MASTER_THREADS * sizeof(read_arguments));
 
         for (int i = 0; i < MASTER_THREADS; i++) {
+            read_args[i].id = i;
+
             switch (i) {
                 
                 /* genre - 1 because threads start from 0
@@ -425,38 +434,82 @@ int main (int argc, char *argv[]) {
                     break;
             }
 
-            read_args[i].id = i;
-            // arguments[i].lines = &lines[0]; 
-
             r = pthread_create(&threads[i], NULL, read_file, &read_args[i]);
 
             if (r) {
                 printf("Can't create thread %d!\n", i);
-                exit(-1);
+                exit(1);
             }
         }
 
-        for (int i = 0; i < P; i++) {
+        for (int i = 0; i < MASTER_THREADS; i++) {
             r = pthread_join(threads[i], &thread_status);
             if (r) {
                 printf("Can't wait thread %d!\n", i);
-                exit(-1);
+                exit(1);
             }
 	    }
 
         free(read_args);
 
+        /* receive paragraphs from workers */
+
     } else if (rank == HORROR) {
-        paragraph_line *lines = (paragraph_line* ) malloc(2600 * sizeof(paragraph_line));
-        int paragraph_size = 0, processing_threads = 1;
-        ret = MPI_Recv(&paragraph_size, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
-        ret = MPI_Recv(lines, paragraph_size * sizeof(struct line), MPI_BYTE, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
+
+        int receive_flag = 1;
+
+        while (receive_flag) {
         
-        processing_threads += paragraph_size / MAX_LINES_THREAD;
-        
-        for (int i = 0; i < paragraph_size; i++) {
-            printf("%s", lines[i].data);
+            paragraph_line *lines = (paragraph_line* ) malloc(2600 * sizeof(paragraph_line));
+            int paragraph_size = 0, nr_threads = 0;
+            
+            
+            /* rerceive size of the paragraph and the paragraph itself */
+            ret = MPI_Recv(&paragraph_size, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
+            ret = MPI_Recv(lines, paragraph_size * sizeof(struct line), MPI_BYTE, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
+
+            /* calculate number of threads */
+            nr_threads = checkNumberOfThreads(paragraph_size);
+
+            /* create the threads and separate the work for every thread */
+            for (int i = 0; i < nr_threads; i++) {
+                thread_args[i].id = i;
+                thread_args[i].words = &words[0]; 
+                thread_args[i].size = words.size();
+
+                r = pthread_create(&threads[i], NULL, processHorrorThreads, &thread_args[i]);
+
+                if (r) {
+                    printf("Can't create thread %d!\n", i);
+                    exit(1);
+                }
+            }
+
+            /* wait threads to finish processing */
+            for (int i = 0; i < P; i++) {
+                r = pthread_join(threads[i], &thread_status);
+                if (r) {
+                    printf("Can't wait thread %d!\n", i);
+                    exit(1);
+                }
+	        }
+
+            /* compose the modified paragraph */
+            for (int i = 0; i < P; i++) {
+                result += (thread_args[i].result);
+            }
+
+            cout << result << "\n";
+
+            /* print lines that i've received */
+            // for (int i = 0; i < paragraph_size; i++) {
+            //     printf("%s", lines[i].data);
+            // }
+
+            /* receive signal for reading from master */
+            MPI_Recv(&receive_flag, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
         }
+
     } else if (rank == COMEDY) {
     
     } else if (rank == FANTASY) {

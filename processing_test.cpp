@@ -238,14 +238,14 @@ int main() {
 
     vector<string> words;
     pthread_t threads[P];
-    t_arguments *arguments;
+    t_arguments *thread_args;
     string result;
     int r = 0;
-    void *status;
+    void *thread_status;
 
     tokenize(paragraph, words);
 
-    arguments = (t_arguments*) malloc(P * sizeof(t_arguments));
+    thread_args = (t_arguments*) malloc(P * sizeof(t_arguments));
 
     pthread_barrier_init(&barrier, NULL, P);
 	if (r) {
@@ -253,14 +253,14 @@ int main() {
 	}
 
 	for (int i = 0; i < P; i++) {
-		arguments[i].id = i;
-        arguments[i].words = &words[0]; 
-        arguments[i].size = words.size();
+		thread_args[i].id = i;
+        thread_args[i].words = &words[0]; 
+        thread_args[i].size = words.size();
 
-		// r = pthread_create(&threads[i], NULL, processHorrorThreads, &arguments[i]);
-		r = pthread_create(&threads[i], NULL, processComedyThreads, &arguments[i]);
-		// r = pthread_create(&threads[i], NULL, processFantasyThreads, &arguments[i]);
-		// r = pthread_create(&threads[i], NULL, processScifiThreads, &arguments[i]);
+		// r = pthread_create(&threads[i], NULL, processHorrorThreads, &thread_args[i]);
+		r = pthread_create(&threads[i], NULL, processComedyThreads, &thread_args[i]);
+		// r = pthread_create(&threads[i], NULL, processFantasyThreads, &thread_args[i]);
+		// r = pthread_create(&threads[i], NULL, processScifiThreads, &thread_args[i]);
 
 		if (r) {
 			printf("Eroare la crearea thread-ului %d\n", i);
@@ -269,7 +269,7 @@ int main() {
 	}
 
 	for (int i = 0; i < P; i++) {
-		r = pthread_join(threads[i], &status);
+		r = pthread_join(threads[i], &thread_status);
 		if (r) {
 			printf("Eroare la asteptarea thread-ului %d\n", i);
 			exit(-1);
@@ -278,7 +278,7 @@ int main() {
 
     /* compose the modified string */
     for (int i = 0; i < P; i++) {
-        result += (arguments[i].result);
+        result += (thread_args[i].result);
     }
 
     cout << result << "\n";
@@ -288,7 +288,7 @@ int main() {
 		printf("Cannot destroy barrier.\n");
 	}
 
-    free(arguments);
+    free(thread_args);
 
     return 0;
 
