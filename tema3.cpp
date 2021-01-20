@@ -322,12 +322,12 @@ void *read_file(void *arg) {
         printf("Error! Can't open this file.\n");
     } else {
         while (!feof(fp)) {
+            memset(lines, 0, sizeof(lines));
             fgets(line, sizeof(line) - 1, (FILE*)fp);
             line_NO++;
             
-            /* if this is type of paragraph we need to read */
+            /* if this is type of paragraph we want to read */
             if (!strncmp(line, args->genre, strlen(genre)) && isNewLineBefore == true) {
-                // read the entire paragraph, keep a vector of lines
 
                 // while paragraph is not finished
                 while (strcmp(line, newline) && !feof(fp)) {
@@ -349,7 +349,12 @@ void *read_file(void *arg) {
                         /* send paragraph to workers and reset paragraph */
                         ret = MPI_Send(&paragraph_size, 1, MPI_INT, id + 1, 0, MPI_COMM_WORLD);
                         ret = MPI_Send(lines, paragraph_size * sizeof(struct line), MPI_BYTE, id + 1, 0, MPI_COMM_WORLD);
-                        memset(lines, 0, sizeof(lines));
+                        for (int i = 0; i < paragraph_size; i++) {
+                             printf("%s", lines[i].data);
+                        }
+                        printf("\n");
+                        // memset(lines, 0, sizeof(lines));
+                        paragraph_size = 0;
 
                         break;
                     }
@@ -363,6 +368,12 @@ void *read_file(void *arg) {
                 }
 
             }
+            if (!strcmp(line, newline)) {
+                isNewLineBefore = true;
+            } else {
+                isNewLineBefore = false;
+            }
+            
             // printf("%s", line);
             memset(line, 0, sizeof(line));
         }
@@ -373,6 +384,7 @@ void *read_file(void *arg) {
     MPI_Send(&send_to_worker, 1, MPI_INT, id + 1, 0, MPI_COMM_WORLD);
     
     args->size = paragraph_size;
+    free(lines);
     fclose(fp);
     pthread_exit(NULL);
 }
@@ -442,19 +454,19 @@ int main (int argc, char *argv[]) {
                 case (HORROR_THREAD):
                     strcpy(read_args[i].genre, HORROR_NAME);
                     /* get the ref of std::vector as an simple array */ 
-                    read_args[i].lines = &horror_lines[0];
+                    // read_args[i].lines = &horror_lines[0];
                     break;
                 case (COMEDY_THREAD):
                     strcpy(read_args[i].genre, COMEDY_NAME);
-                    read_args[i].lines = &comedy_lines[0]; 
+                    // read_args[i].lines = &comedy_lines[0]; 
                     break;
                 case (FANTASY_THREAD): 
                     strcpy(read_args[i].genre, FANTASY_NAME);
-                    read_args[i].lines = &fantasy_lines[0]; 
+                    // read_args[i].lines = &fantasy_lines[0]; 
                     break;
                 case (SCIFI_THREAD): 
                     strcpy(read_args[i].genre, SCIFI_NAME);
-                    read_args[i].lines = &scifi_lines[0]; 
+                    // read_args[i].lines = &scifi_lines[0]; 
                     break;
             }
 
@@ -484,9 +496,8 @@ int main (int argc, char *argv[]) {
         MPI_Recv(&receive_flag, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &mpi_status);
 
         while (receive_flag) {
-        
-            memset(lines, 0, sizeof(lines));
             
+            memset(lines, 0, sizeof(lines));
 
             /* first thread receives data from master */
             /**************************/
@@ -516,7 +527,7 @@ int main (int argc, char *argv[]) {
             
             /* print lines that i've received */
             for (int i = 0; i < paragraph_size; i++) {
-                printf("%s", lines[i].data);
+                // printf("%s", lines[i].data);
             }
             
             /* receive signal for reading from master */
