@@ -311,6 +311,20 @@ void *processFantasyThreads(void *arg) {
 	pthread_exit(NULL);
 }
 
+void write_output(vector<paragraph_line> result, string output_file) {
+    FILE *f;
+    f = fopen(output_file.c_str(), "w");
+    if (f == NULL) {
+        printf("Error! Can't open this file.\n");
+    } else {
+        for (int i = 0; i < result.size(); i++) {
+            fprintf(f, "%s\n", result[i].data);
+        }
+    }
+
+    fclose(f);
+}
+
 /* read file  */
 void *read_file(void *arg) {
     FILE *fp;
@@ -516,12 +530,7 @@ int main (int argc, char *argv[]) {
 
         free(read_args);
 
-        cout << "Total number of paragraphs " << nr_paragraphs << "\n";
         /* receive size of the paragraph and the paragraph itself from workers */
-        /* 
-        * primesc numarul de paragrafe ce urmeaza a fi primite
-        * primesc toate paragrafele 
-        */
 
         for (int i = 0; i < MASTER_THREADS; i++) {
             switch (i) {
@@ -565,9 +574,12 @@ int main (int argc, char *argv[]) {
         
         sort(final_result.begin(), final_result.end(), paragraphs_order);
 
-        for (int i = 0; i < nr_paragraphs - 1; i++) {
-            cout << final_result[i].data << endl;
-        }
+        // for (int i = 0; i < nr_paragraphs - 1; i++) {
+        //     cout << final_result[i].data << endl;
+        // }
+
+        /* write result */
+        write_output(final_result, "output.out");
 
     } else if (rank == HORROR) {
 
