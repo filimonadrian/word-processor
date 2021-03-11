@@ -294,13 +294,7 @@ int main() {
 
     free(thread_args);
 
-
-    vector<string> test;
-    test.reserve(9000);
-    test.push_back("aa");
-    test.push_back("aa");
-
-    cout << "size: " << test.capacity();
+    string test = "Ana\n";
 
     return 0;
 

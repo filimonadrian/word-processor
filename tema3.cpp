@@ -38,12 +38,14 @@ const char newline[2] = "\n";
 
 using namespace std;
 
+string path;
+string out_file;
 pthread_barrier_t barrier;
 
 /* this is a line from a paragraph */
 typedef struct __attribute__((__packed__)) line {
     // string data;
-    char data[500];
+    char data[BUFMAX];
     int NO;
 } paragraph_line;
 
@@ -183,8 +185,8 @@ void *processHorrorThreads(void *arg) {
 
     for (int i = start; i < end; i++) {
         rez += duplicateConsonants(words[i]);
-        
-        if (start != size - 1) {
+
+        if (i != size - 1) {
             rez += " ";
         }
     }
@@ -247,7 +249,7 @@ void *processComedyThreads(void *arg) {
                 rez.push_back((words[i])[j]);
             }
         }
-        if (start != size - 1) {
+        if (i != size - 1) {
             rez.push_back(' ');
         }
         // cout << "\n";
@@ -284,7 +286,7 @@ void *processScifiThreads(void *arg) {
             reverse(words[i].begin(), words[i].end());
         }
         rez += words[i];
-        if (start != size - 1) {
+        if (i != size - 1) {
             rez += " ";
         }
     }
@@ -327,7 +329,7 @@ void *processFantasyThreads(void *arg) {
             }
         } 
         rez += words[i];
-        if (start != size - 1) {
+        if (i != size - 1) {
             rez += " ";
         }
     }
@@ -364,7 +366,7 @@ void *read_file(void *arg) {
 
     read_arguments *args = (read_arguments*)(arg);
     int id = args->id;
-    paragraph_line *lines = (paragraph_line* ) malloc(2600 * sizeof(paragraph_line));
+    paragraph_line *lines = (paragraph_line* ) malloc(3000 * sizeof(paragraph_line));
     char genre[20];
     strcpy(genre, args->genre);
     bool isNewLineBefore = true;
@@ -376,8 +378,8 @@ void *read_file(void *arg) {
     int nr_paragraps = 0;
 
     /* buffer reader */
-    char line[501];
-    fp = fopen("input1.in", "r");
+    char line[BUFMAX];
+    fp = fopen(path.c_str(), "r");
 
     if (fp == NULL) {
         printf("Error! Can't open this file.\n");
@@ -503,9 +505,9 @@ int main (int argc, char *argv[]) {
     int r = 0;
     void *thread_status;
     MPI_Status mpi_status;
-    char line[600];
+    char line[BUFMAX];
 
-    paragraph_line *lines = (paragraph_line* ) malloc(2600 * sizeof(paragraph_line));
+    paragraph_line *lines = (paragraph_line* ) malloc(3000 * sizeof(paragraph_line));
     // paragraph_line *result_paragraphs = (paragraph_line *) malloc (2900 * sizeof(paragraph_line));
     vector<paragraph_line> result_paragraphs;
     result_paragraphs.reserve(3000);
@@ -513,6 +515,9 @@ int main (int argc, char *argv[]) {
 
     int paragraph_size = 0, nr_threads = 0;
 
+    path = argv[1];
+    // out_file = "./output.out"; 
+    out_file = "./tests/in/" + path.substr(11, 6) + ".out";
 
     if (rank == MASTER) {
         int nr_paragraphs = 0;
@@ -600,7 +605,9 @@ int main (int argc, char *argv[]) {
         sort(final_result.begin(), final_result.end(), paragraphs_order);
 
         /* write result */
-        write_output(final_result, "output.out");
+        // write_output(final_result, "output.out");
+        write_output(final_result, out_file);
+
 
     } else if (rank == HORROR) {
 
@@ -880,13 +887,6 @@ int main (int argc, char *argv[]) {
             nr_threads = checkNumberOfThreads(paragraph_size);
             int proc_threads = nr_threads - 1;
 
-            /* tokenize string  and send to processing threads */
-            // string paragraph;
-            // for (int i = 0; i < paragraph_size; i++) {
-            //     paragraph += lines[i].data;
-            // }
-
-            // tokenize2(paragraph, words);
             result += SCIFI_NAME;
             result += "\n";
             
